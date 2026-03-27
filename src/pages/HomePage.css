@@ -1,11 +1,142 @@
 .home-page {
-  padding-top: 8px;
+  padding: 16px 0 100px;
 }
 
-.medicines-list {
+/* Progress Section */
+.progress-section {
+  background: white;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.progress-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.progress-count {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0ea5e9;
+}
+
+.progress-bar-container {
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0ea5e9, #10b981);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+/* Next Dose Card */
+.next-dose-card {
+  background: linear-gradient(135deg, #0ea5e9 0%, #14b8a6 100%);
+  padding: 16px 20px;
+  border-radius: 16px;
+  margin: 0 20px 20px;
+  box-shadow: 0 8px 24px rgba(14, 165, 233, 0.3);
+}
+
+.next-dose-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.next-dose-content {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.next-dose-icon {
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.next-dose-info {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 2px;
+}
+
+.next-dose-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+}
+
+.next-dose-time {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.take-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: white;
+  color: #0ea5e9;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.take-btn:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Section */
+.section {
+  padding: 0 20px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 12px;
+}
+
+/* Medicine List */
+.medicine-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .medicine-card {
@@ -13,23 +144,20 @@
   align-items: center;
   padding: 14px 16px;
   background: white;
-  border-radius: 16px;
+  border-radius: 14px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   border: 1px solid #f1f5f9;
   transition: all 0.2s ease;
 }
 
-.medicine-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+.medicine-card.past-due {
+  border-left: 3px solid #f97316;
+  background: #fff7ed;
 }
 
 .medicine-card.taken {
   opacity: 0.6;
   background: #f8fafc;
-}
-
-.medicine-card.past-due {
-  border-left: 3px solid #f97316;
 }
 
 .medicine-icon {
@@ -44,44 +172,54 @@
   flex-shrink: 0;
 }
 
-.medicine-details {
+.medicine-icon.taken {
+  background: #10b981;
+}
+
+.medicine-info {
   flex: 1;
-  margin-left: 12px;
+  margin-left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .medicine-name {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   color: #1e293b;
-  margin: 0 0 4px 0;
 }
 
-.medicine-times {
+.medicine-meta {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 12px;
 }
 
-.time-badge {
-  display: inline-flex;
+.time-text {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.overdue-text {
+  display: flex;
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #64748b;
-  background: #f1f5f9;
-  padding: 4px 8px;
-  border-radius: 8px;
+  color: #f97316;
+  font-weight: 600;
 }
 
-.medicine-actions {
-  display: flex;
-  align-items: center;
-}
-
-.action-btn {
+.take-btn-small {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  background: linear-gradient(135deg, #0ea5e9 0%, #14b8a6 100%);
+  color: white;
   border: none;
+  border-radius: 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -89,22 +227,39 @@
   transition: all 0.2s;
 }
 
-.check-btn {
-  background: linear-gradient(135deg, #0ea5e9 0%, #14b8a6 100%);
-  color: white;
-}
-
-.check-btn:hover {
+.take-btn-small:hover {
   transform: scale(1.05);
 }
 
-.taken-badge {
+.take-btn-small:active {
+  transform: scale(0.95);
+}
+
+.taken-check {
+  width: 40px;
+  height: 40px;
+  background: #d1fae5;
+  color: #10b981;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Section Divider */
+.section-divider {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  margin-top: 8px;
+}
+
+.section-divider span {
   font-size: 12px;
   font-weight: 600;
-  color: #10b981;
-  background: #d1fae5;
-  padding: 6px 12px;
-  border-radius: 20px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* Empty State */

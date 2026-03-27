@@ -1,20 +1,32 @@
 .app-header {
   background: linear-gradient(135deg, #0ea5e9 0%, #14b8a6 50%, #10b981 100%);
-  padding: 20px 20px 24px;
+  padding: 16px 20px 20px;
 }
 
 .header-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
-.logo {
-  font-size: 28px;
-  font-weight: 800;
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
+.app-name {
+  font-size: 18px;
+  font-weight: 700;
   color: white;
-  letter-spacing: -1px;
+  letter-spacing: -0.5px;
 }
 
 .header-actions {
@@ -33,39 +45,32 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s ease;
 }
 
-.icon-btn.profile {
-  background: white;
-  color: #0ea5e9;
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .greeting {
-  margin-bottom: 16px;
-}
-
-.greeting-text {
-  display: block;
-  font-size: 16px;
-  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 12px;
 }
 
 .date-text {
   display: block;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.7);
-  margin-top: 2px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
 }
 
 .today-card {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 16px 20px;
+  padding: 16px 18px;
   background: white;
   border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-  margin-top: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 .today-icon {
@@ -76,16 +81,23 @@
   justify-content: center;
   background: linear-gradient(135deg, #0ea5e9 0%, #14b8a6 100%);
   border-radius: 14px;
-  font-size: 22px;
+  overflow: hidden;
+}
+
+.today-icon img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 
 .today-info {
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
 
 .today-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: #1e293b;
 }
@@ -94,4 +106,22 @@
   font-size: 13px;
   color: #64748b;
   margin-top: 2px;
+}
+
+.today-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 0 0 16px 16px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #0ea5e9, #10b981);
+  border-radius: 2px;
+  transition: width 0.5s ease;
 }

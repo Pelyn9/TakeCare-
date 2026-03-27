@@ -1,18 +1,10 @@
-import { useState, useEffect } from 'react';
-import { Bell, Database, Trash2, Info, AlertCircle } from 'lucide-react';
-import Header from '../components/Header';
+import { Bell, Database, Trash2, Info } from 'lucide-react';
 import storageService from '../services/storage';
 import useNotifications from '../hooks/useNotifications';
 import './SettingsPage.css';
 
-const SettingsPage = () => {
+const SettingsPage = ({ medicines = [], onRefresh }) => {
   const { permission, requestPermission, supported } = useNotifications();
-  const [medicines, setMedicines] = useState([]);
-
-  useEffect(() => {
-    const meds = storageService.getMedicines();
-    setMedicines(meds);
-  }, []);
 
   const handleNotificationToggle = async () => {
     if (permission !== 'granted') {
@@ -23,7 +15,7 @@ const SettingsPage = () => {
   const handleClearData = () => {
     if (confirm('Are you sure you want to delete all your data? This cannot be undone.')) {
       storageService.clearAll();
-      setMedicines([]);
+      if (onRefresh) onRefresh();
       alert('All data cleared');
     }
   };
@@ -39,13 +31,13 @@ const SettingsPage = () => {
 
   return (
     <div className="settings-page">
-      <Header />
+      <div className="settings-header">
+        <h2>Settings</h2>
+      </div>
       
       <div className="settings-content">
-        <h2>Settings</h2>
-        
         <div className="settings-section">
-          <h3><Bell size={14} /> Notifications</h3>
+          <h3><Bell size={16} /> Notifications</h3>
           <div className="setting-item">
             <div className="setting-info">
               <span className="setting-label">Push Notifications</span>
@@ -61,7 +53,7 @@ const SettingsPage = () => {
         </div>
 
         <div className="settings-section">
-          <h3><Database size={14} /> Data</h3>
+          <h3><Database size={16} /> Data</h3>
           <div className="setting-item">
             <div className="setting-info">
               <span className="setting-label">Total Medicines</span>
@@ -80,7 +72,7 @@ const SettingsPage = () => {
         </div>
 
         <div className="settings-section">
-          <h3><Info size={14} /> About</h3>
+          <h3><Info size={16} /> About</h3>
           <div className="setting-item">
             <div className="setting-info">
               <span className="setting-label">App Version</span>
