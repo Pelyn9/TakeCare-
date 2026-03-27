@@ -7,6 +7,8 @@ class AlarmService {
     this.alarmTimeouts = new Map();
     this.isPlaying = false;
     this.alarmInterval = null;
+    this.activeAlarmDose = null;
+    this.hasUserInteracted = false;
   }
 
   // Initialize audio context on user interaction
@@ -20,12 +22,17 @@ class AlarmService {
     return this.audioContext;
   }
 
+  // Mark that user has interacted with the app
+  markUserInteracted() {
+    this.hasUserInteracted = true;
+  }
+
   // Play alarm sound using Web Audio API
   playAlarm() {
     try {
       const ctx = this.initAudio();
       
-      // Create multiple oscillators for a more noticeable alarm
+      // Create beep sound
       const createBeep = (startTime, frequency) => {
         const oscillator = ctx.createOscillator();
         const gainNode = ctx.createGain();
@@ -49,13 +56,13 @@ class AlarmService {
       // Alarm pattern - repeating beeps
       const now = ctx.currentTime;
       for (let i = 0; i < 4; i++) {
-        createBeep(now + i * 0.3, 880); // High beep
-        createBeep(now + i * 0.3 + 0.15, 660); // Low beep
+        createBeep(now + i * 0.3, 880);
+        createBeep(now + i * 0.3 + 0.15, 660);
       }
 
       return true;
-    } catch (error) {
-      console.error('Error playing alarm:', error);
+    } catch {
+      console.error('Error playing alarm');
       return false;
     }
   }
@@ -69,27 +76,28 @@ class AlarmService {
     
     // Play alarm every 2 seconds
     this.alarmInterval = setInterval(() => {
-      this.playAlarm();
+      if (this.isPlaying) {
+        this.playAlarm();
+      }
     }, 2000);
   }
 
   // Stop the continuous alarm
   stopAlarm() {
+    this.isPlaying = false;
     if (this.alarmInterval) {
       clearInterval(this.alarmInterval);
       this.alarmInterval = null;
     }
-    this.isPlaying = false;
   }
 
   // Vibrate device with pattern
   vibrate(pattern = [500, 200, 500, 200, 500]) {
-    if ('vibrate' in navigator) {
+    if ('vibrate' in navigator && this.hasUserInteracted) {
       try {
         navigator.vibrate(pattern);
         return true;
-      } catch (error) {
-        console.error('Error vibrating:', error);
+      } catch {
         return false;
       }
     }
@@ -98,11 +106,11 @@ class AlarmService {
 
   // Vibrate continuously until stopped
   vibrateContinuously() {
-    if ('vibrate' in navigator) {
+    if ('vibrate' in navigator && this.hasUserInteracted) {
       try {
         navigator.vibrate([200, 100, 200, 100, 200]);
         return true;
-      } catch (error) {
+      } catch {
         return false;
       }
     }
@@ -111,21 +119,37 @@ class AlarmService {
 
   // Stop vibration
   stopVibration() {
-    if ('vibrate' in navigator) {
-      navigator.vibrate(0);
+    if ('vibrate' in navigator && this.hasUserInteracted) {
+      try {
+        navigator.vibrate(0);
+      } catch {
+        // Ignore errors when stopping vibration
+      }
     }
   }
 
   // Trigger full alarm (sound + vibration)
-  triggerAlarm() {
+  triggerAlarm(dose) {
+    this.activeAlarmDose = dose;
     this.playContinuousAlarm();
     this.vibrateContinuously();
   }
 
-  // Stop the alarm
+  // Stop the alarm completely
   stopAlarmAndVibration() {
     this.stopAlarm();
     this.stopVibration();
+    this.activeAlarmDose = null;
+  }
+
+  // Check if alarm is currently playing
+  isAlarmPlaying() {
+    return this.isPlaying;
+  }
+
+  // Get current active alarm dose
+  getActiveAlarmDose() {
+    return this.activeAlarmDose;
   }
 
   // Show browser notification
@@ -141,43 +165,31 @@ class AlarmService {
           ...options
         });
         
-        // Play sound when notification is shown
         notification.onshow = () => {
-          this.playAlarm();
+          if (this.isPlaying) {
+            this.playAlarm();
+          }
         };
         
-        // Handle notification click - bring app to foreground
         notification.onclick = () => {
-          // Stop alarm when notification is clicked
           this.stopAlarmAndVibration();
-          
-          // Focus the app window
-          if (window.focus) {
-            window.focus();
-          }
-          
-          // Close the notification
+          if (window.focus) window.focus();
           notification.close();
-          
-          // If there's a callback, execute it
-          if (options.onClick) {
-            options.onClick();
-          }
+          if (options.onClick) options.onClick();
         };
         
-        // Auto close after 30 seconds
         setTimeout(() => notification.close(), 30000);
         
         return notification;
-      } catch (error) {
-        console.error('Error showing notification:', error);
+      } catch {
+        console.error('Error showing notification');
       }
     }
     return null;
   }
 
   // Schedule an alarm for a specific time
-  scheduleAlarm(medicineName, time, onAlarm) {
+  scheduleAlarm(medicineName, time, doseId, onAlarm) {
     const now = new Date();
     const [hours, minutes] = time.split(':');
     const alarmTime = new Date();
@@ -190,37 +202,26 @@ class AlarmService {
 
     const delay = alarmTime.getTime() - now.getTime();
     
-    // Store alarm info for reference
     const alarmInfo = {
       medicineName,
       time,
+      doseId,
       scheduledFor: alarmTime.toISOString()
     };
 
     const timeoutId = setTimeout(() => {
-      // Trigger the alarm callback
-      if (onAlarm) onAlarm(medicineName, time);
-      
-      // Show notification
-      this.showNotification(`Time for ${medicineName}!`, {
-        body: `It's time to take your medicine`,
-        tag: `dose-${medicineName}-${time}`
-      });
-      
-      // Play alarm and vibrate
-      this.triggerAlarm();
+      if (onAlarm) onAlarm(medicineName, time, doseId);
     }, delay);
 
-    // Store timeout ID
-    const id = `${medicineName}-${time}`;
+    const id = `${medicineName}-${time}-${doseId}`;
     this.alarmTimeouts.set(id, { timeoutId, ...alarmInfo });
 
     return { id, ...alarmInfo, delay };
   }
 
   // Cancel a scheduled alarm
-  cancelAlarm(medicineName, time) {
-    const id = `${medicineName}-${time}`;
+  cancelAlarm(medicineName, time, doseId) {
+    const id = `${medicineName}-${time}-${doseId}`;
     const alarmData = this.alarmTimeouts.get(id);
     if (alarmData) {
       clearTimeout(alarmData.timeoutId);
@@ -232,31 +233,12 @@ class AlarmService {
 
   // Cancel all alarms
   cancelAllAlarms() {
-    this.stopAlarmAndVibration();
+    this.stopAlarm();
+    this.stopVibration();
     this.alarmTimeouts.forEach(alarmData => {
       clearTimeout(alarmData.timeoutId);
     });
     this.alarmTimeouts.clear();
-  }
-
-  // Check if it's time for a dose and trigger alarm
-  checkAndNotify(doses, onAlarm) {
-    const now = new Date();
-    const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
-
-    doses.forEach(dose => {
-      if (!dose.taken && dose.time === currentTime) {
-        // Show notification
-        this.showNotification(`Time for ${dose.medicineName}!`, {
-          body: `It's time to take your medicine at ${dose.time}`
-        });
-        
-        // Play alarm and vibrate
-        this.triggerAlarm();
-        
-        if (onAlarm) onAlarm(dose);
-      }
-    });
   }
 
   // Get all scheduled alarms

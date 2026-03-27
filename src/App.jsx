@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import FloatingActionButton from './components/FloatingActionButton';
@@ -16,26 +16,32 @@ function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeAlarmDose, setActiveAlarmDose] = useState(null);
+  const [hasShownAlarm, setHasShownAlarm] = useState(false);
+  const lastCheckedTime = useRef(null);
   const { todayDoses, addMedicine, markDoseTaken, medicines, refresh, stopAlarm } = useMedicines();
 
   const takenCount = todayDoses.filter(d => d.taken).length;
   const totalCount = todayDoses.length;
 
-  // Request notification permission on mount
+  // Request notification permission on mount and initialize audio
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
     
-    // Initialize audio context on first user interaction
+    // Initialize audio and mark user interaction on first interaction
     const initAudio = () => {
       alarmService.initAudio();
+      alarmService.markUserInteracted();
       document.removeEventListener('click', initAudio);
+      document.removeEventListener('touchstart', initAudio);
     };
     document.addEventListener('click', initAudio);
+    document.addEventListener('touchstart', initAudio);
     
     return () => {
       document.removeEventListener('click', initAudio);
+      document.removeEventListener('touchstart', initAudio);
     };
   }, []);
 
@@ -43,15 +49,31 @@ function App() {
   useEffect(() => {
     const checkDoses = () => {
       const now = new Date();
-      const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
+      const currentTime = now.toTimeString().slice(0, 5);
+      
+      // Only check once per minute to prevent multiple triggers
+      if (lastCheckedTime.current === currentTime) return;
+      lastCheckedTime.current = currentTime;
 
       todayDoses.forEach(dose => {
-        if (!dose.taken && dose.time === currentTime && !activeAlarmDose) {
-          // Show the alarm modal
-          setActiveAlarmDose(dose);
-          alarmService.triggerAlarm();
+        // Only trigger alarm if:
+        // 1. Dose is not taken
+        // 2. Time matches exactly
+        // 3. We haven't already shown an alarm for this time
+        // 4. No active alarm is showing
+        if (!dose.taken && 
+            dose.time === currentTime && 
+            !activeAlarmDose && 
+            !hasShownAlarm) {
           
-          // Also show browser notification
+          // Set alarm state
+          setActiveAlarmDose(dose);
+          setHasShownAlarm(true);
+          
+          // Trigger alarm
+          alarmService.triggerAlarm(dose);
+          
+          // Show browser notification
           if ('Notification' in window && Notification.permission === 'granted') {
             new Notification(`Time for ${dose.medicineName}!`, {
               body: `It's time to take your medicine`,
@@ -70,7 +92,21 @@ function App() {
     const interval = setInterval(checkDoses, 60000);
     
     return () => clearInterval(interval);
-  }, [todayDoses, activeAlarmDose]);
+  }, [todayDoses, activeAlarmDose, hasShownAlarm]);
+
+  // Reset hasShownAlarm at midnight
+  useEffect(() => {
+    const checkDate = () => {
+      const today = new Date().toDateString();
+      if (checkDate.lastDate !== today) {
+        setHasShownAlarm(false);
+        checkDate.lastDate = today;
+      }
+    };
+    checkDate();
+    const interval = setInterval(checkDate, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Handle notification bell click
   const handleNotificationClick = () => {

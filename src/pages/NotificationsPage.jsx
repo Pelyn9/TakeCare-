@@ -1,20 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { Bell, Clock, CheckCircle, Pill, ArrowLeft } from 'lucide-react';
 import storageService from '../services/storage';
 import './NotificationsPage.css';
 
 const NotificationsPage = ({ onBack }) => {
-  const [notifications, setNotifications] = useState([]);
-  const [medicines, setMedicines] = useState([]);
-
-  useEffect(() => {
-    // Get all history entries as notifications
+  // Get notifications as derived state
+  const notifications = useMemo(() => {
     const history = storageService.getHistory();
     const meds = storageService.getMedicines();
-    setMedicines(meds);
 
     // Convert history to notifications
-    const notifs = history.map(entry => {
+    return history.map(entry => {
       const medicine = meds.find(m => m.id === entry.medicineId);
       return {
         id: entry.id || `${entry.medicineId}-${entry.time}-${entry.takenAt}`,
@@ -25,8 +21,6 @@ const NotificationsPage = ({ onBack }) => {
         status: 'taken'
       };
     }).sort((a, b) => new Date(b.takenAt) - new Date(a.takenAt));
-
-    setNotifications(notifs);
   }, []);
 
   const formatDate = (dateString) => {
@@ -51,14 +45,16 @@ const NotificationsPage = ({ onBack }) => {
   };
 
   // Group notifications by date
-  const groupedNotifications = notifications.reduce((groups, notification) => {
-    const date = formatDate(notification.takenAt);
-    if (!groups[date]) {
-      groups[date] = [];
-    }
-    groups[date].push(notification);
-    return groups;
-  }, {});
+  const groupedNotifications = useMemo(() => {
+    return notifications.reduce((groups, notification) => {
+      const date = formatDate(notification.takenAt);
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(notification);
+      return groups;
+    }, {});
+  }, [notifications]);
 
   return (
     <div className="notifications-page">

@@ -1,11 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import storageService from '../services/storage';
 import alarmService from '../services/alarmService';
 
 export const useMedicines = () => {
-  const [medicines, setMedicines] = useState([]);
-  const [todayDoses, setTodayDoses] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [medicines, setMedicines] = useState(() => storageService.getMedicines());
   const isMounted = useRef(true);
 
   // Check if medicine is active on a given date
@@ -30,24 +28,15 @@ export const useMedicines = () => {
     return true;
   }, []);
 
-  // Check if dose was taken
-  const checkIfDoseTaken = useCallback((medicineId, time, date) => {
-    const history = storageService.getHistory();
-    return history.some(entry => 
-      entry.medicineId === medicineId && 
-      entry.time === time &&
-      new Date(entry.takenAt).toDateString() === date
-    );
-  }, []);
-
-  // Generate today's doses from medicines
-  const generateTodayDoses = useCallback((medList) => {
+  // Generate today's doses from medicines (computed value)
+  const todayDoses = useMemo(() => {
     const today = new Date();
     const todayDate = today.toDateString();
+    const history = storageService.getHistory();
 
     const doses = [];
     
-    medList.forEach(medicine => {
+    medicines.forEach(medicine => {
       // Check if medicine is active today
       const isActive = checkIfActive(medicine, today);
       if (!isActive) return;
@@ -55,7 +44,11 @@ export const useMedicines = () => {
       // Add each scheduled time as a dose
       medicine.times.forEach(time => {
         const doseId = `${medicine.id}-${time}`;
-        const isTaken = checkIfDoseTaken(medicine.id, time, todayDate);
+        const isTaken = history.some(entry => 
+          entry.medicineId === medicine.id && 
+          entry.time === time &&
+          new Date(entry.takenAt).toDateString() === todayDate
+        );
         
         doses.push({
           id: doseId,
@@ -76,10 +69,8 @@ export const useMedicines = () => {
       return timeA - timeB;
     });
 
-    if (isMounted.current) {
-      setTodayDoses(doses);
-    }
-  }, [checkIfActive, checkIfDoseTaken]);
+    return doses;
+  }, [medicines, checkIfActive]);
 
   // Schedule alarms for all upcoming doses
   const scheduleAlarms = useCallback((doses) => {
@@ -88,133 +79,88 @@ export const useMedicines = () => {
     
     doses.forEach(dose => {
       if (!dose.taken) {
-        alarmService.scheduleAlarm(dose.medicineName, dose.time, (medicineName) => {
-          // This callback fires when the alarm triggers
+        alarmService.scheduleAlarm(dose.medicineName, dose.time, dose.id, (medicineName) => {
           console.log(`Alarm triggered for ${medicineName}`);
         });
       }
     });
   }, []);
 
-  // Load medicines
-  const loadMedicines = useCallback(() => {
-    const storedMedicines = storageService.getMedicines();
-    if (isMounted.current) {
-      setMedicines(storedMedicines);
-      generateTodayDoses(storedMedicines);
-      setLoading(false);
-    }
-  }, [generateTodayDoses]);
-
-  // Load medicines on mount
-  useEffect(() => {
-    isMounted.current = true;
-    loadMedicines();
-    
-    return () => {
-      isMounted.current = false;
-    };
-  }, [loadMedicines]);
-
   // Schedule alarms when doses change
   useEffect(() => {
-    if (!loading && todayDoses.length > 0) {
+    if (todayDoses.length > 0) {
       scheduleAlarms(todayDoses);
     }
     
     return () => {
-      // Cleanup: stop alarms when component unmounts
       alarmService.stopAlarmAndVibration();
     };
-  }, [todayDoses, loading, scheduleAlarms]);
+  }, [todayDoses, scheduleAlarms]);
 
   // Add new medicine
   const addMedicine = useCallback((medicineData) => {
     const newMedicine = storageService.addMedicine(medicineData);
     if (isMounted.current) {
       setMedicines(prev => [...prev, newMedicine]);
-      generateTodayDoses([...medicines, newMedicine]);
     }
     return newMedicine;
-  }, [medicines, generateTodayDoses]);
+  }, []);
 
   // Update medicine
   const updateMedicine = useCallback((id, updates) => {
     const updated = storageService.updateMedicine(id, updates);
     if (updated && isMounted.current) {
       setMedicines(prev => prev.map(m => m.id === id ? updated : m));
-      generateTodayDoses(medicines.map(m => m.id === id ? updated : m));
     }
     return updated;
-  }, [medicines, generateTodayDoses]);
+  }, []);
 
   // Delete medicine
   const deleteMedicine = useCallback((id) => {
     storageService.deleteMedicine(id);
     if (isMounted.current) {
       setMedicines(prev => prev.filter(m => m.id !== id));
-      generateTodayDoses(medicines.filter(m => m.id !== id));
     }
-  }, [medicines, generateTodayDoses]);
+  }, []);
 
   // Mark dose as taken
   const markDoseTaken = useCallback((medicineId, time) => {
     storageService.markDoseTaken(medicineId, time);
     
     // Cancel the alarm for this dose
-    const medicine = medicines.find(m => m.id === medicineId);
-    if (medicine) {
-      alarmService.cancelAlarm(medicine.name, time);
+    const dose = todayDoses.find(d => d.medicineId === medicineId && d.time === time);
+    if (dose) {
+      alarmService.cancelAlarm(dose.medicineName, time, dose.id);
     }
     
+    // Refresh medicines to update the computed doses
     if (isMounted.current) {
-      setTodayDoses(prev => prev.map(dose => {
-        if (dose.medicineId === medicineId && dose.time === time) {
-          return { ...dose, taken: true };
-        }
-        return dose;
-      }));
+      setMedicines(storageService.getMedicines());
     }
-  }, [medicines]);
+  }, [todayDoses]);
 
   // Stop alarm (when user acknowledges it)
   const stopAlarm = useCallback(() => {
     alarmService.stopAlarmAndVibration();
   }, []);
 
-  // Get upcoming doses (not yet taken)
-  const getUpcomingDoses = useCallback(() => {
-    const now = new Date();
-    const currentTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    
-    return todayDoses.filter(dose => 
-      !dose.taken && dose.time >= currentTime
-    );
-  }, [todayDoses]);
-
-  // Get taken doses count
-  const getTakenCount = useCallback(() => {
-    return todayDoses.filter(d => d.taken).length;
-  }, [todayDoses]);
-
-  // Get total doses count
-  const getTotalCount = useCallback(() => {
-    return todayDoses.length;
-  }, [todayDoses]);
+  // Refresh medicines from storage
+  const refresh = useCallback(() => {
+    const storedMedicines = storageService.getMedicines();
+    if (isMounted.current) {
+      setMedicines(storedMedicines);
+    }
+  }, []);
 
   return {
     medicines,
     todayDoses,
-    loading,
     addMedicine,
     updateMedicine,
     deleteMedicine,
     markDoseTaken,
     stopAlarm,
-    getUpcomingDoses,
-    getTakenCount,
-    getTotalCount,
-    refresh: loadMedicines
+    refresh
   };
 };
 

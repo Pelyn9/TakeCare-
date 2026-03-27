@@ -1,32 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import alarmService from '../services/alarmService';
 import './AlarmModal.css';
 
 const AlarmModal = ({ dose, onClose, onTake }) => {
-  const [isVisible, setIsVisible] = useState(false);
-
   useEffect(() => {
     if (dose) {
-      setIsVisible(true);
-      alarmService.triggerAlarm();
+      // Start alarm when modal appears
+      alarmService.triggerAlarm(dose);
     }
     
     return () => {
+      // Stop alarm when modal unmounts
       alarmService.stopAlarmAndVibration();
     };
   }, [dose]);
 
-  if (!dose || !isVisible) return null;
+  if (!dose) return null;
 
   const handleTake = () => {
     alarmService.stopAlarmAndVibration();
     onTake();
-    setIsVisible(false);
   };
 
   const handleDismiss = () => {
     alarmService.stopAlarmAndVibration();
-    setIsVisible(false);
     if (onClose) onClose();
   };
 

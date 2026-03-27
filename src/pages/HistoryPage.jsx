@@ -1,28 +1,29 @@
-import { useState, useEffect } from 'react';
-import { Clock, Calendar, FileText } from 'lucide-react';
+import { useMemo } from 'react';
+import { Clock, Pill, CheckCircle } from 'lucide-react';
 import storageService from '../services/storage';
 import './HistoryPage.css';
 
 const HistoryPage = () => {
-  const [history, setHistory] = useState([]);
-  const [medicines, setMedicines] = useState([]);
-
-  useEffect(() => {
-    const historyData = storageService.getHistory();
-    const medicinesData = storageService.getMedicines();
-    setMedicines(medicinesData);
+  // Get history data as derived state
+  const historyData = useMemo(() => {
+    const history = storageService.getHistory();
+    const medicines = storageService.getMedicines();
     
     // Sort by date, most recent first
-    const sorted = historyData.sort((a, b) => 
+    const sorted = [...history].sort((a, b) => 
       new Date(b.takenAt) - new Date(a.takenAt)
     );
-    setHistory(sorted);
+    
+    // Add medicine name to each entry
+    return sorted.map(entry => {
+      const medicine = medicines.find(m => m.id === entry.medicineId);
+      return {
+        ...entry,
+        medicineName: medicine ? medicine.name : 'Unknown Medicine',
+        medicineIcon: medicine ? medicine.icon : 'pill'
+      };
+    });
   }, []);
-
-  const getMedicineName = (medicineId) => {
-    const medicine = medicines.find(m => m.id === medicineId);
-    return medicine ? medicine.name : 'Unknown';
-  };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -45,32 +46,62 @@ const HistoryPage = () => {
     return `${hour12}:${minutes} ${ampm}`;
   };
 
+  const formatDateTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
+  // Group history by date
+  const groupedHistory = useMemo(() => {
+    return historyData.reduce((groups, entry) => {
+      const date = formatDate(entry.takenAt);
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(entry);
+      return groups;
+    }, {});
+  }, [historyData]);
+
   return (
     <div className="history-page">
       <div className="history-header">
         <h2>History</h2>
-        <p className="history-subtitle">{history.length} {history.length === 1 ? 'entry' : 'entries'}</p>
+        <p className="history-subtitle">{historyData.length} doses taken</p>
       </div>
       
       <div className="history-list">
-        {history.length === 0 ? (
+        {historyData.length === 0 ? (
           <div className="empty-history">
-            <FileText size={48} className="empty-icon" />
+            <Clock size={48} className="empty-icon" />
             <p>No history yet</p>
-            <p className="empty-subtext">Your taken medicines will appear here</p>
+            <span>Your taken medicines will appear here</span>
           </div>
         ) : (
-          history.map((entry, index) => (
-            <div key={index} className="history-item">
-              <div className="history-info">
-                <span className="history-name">{getMedicineName(entry.medicineId)}</span>
-                <span className="history-time">
-                  <Clock size={12} /> {formatTime(entry.time)}
-                </span>
-              </div>
-              <span className="history-date">
-                <Calendar size={12} /> {formatDate(entry.takenAt)}
-              </span>
+          Object.entries(groupedHistory).map(([date, items]) => (
+            <div key={date} className="history-group">
+              <div className="history-date">{date}</div>
+              {items.map((entry, index) => (
+                <div key={`${entry.medicineId}-${entry.time}-${entry.takenAt}-${index}`} className="history-item">
+                  <div className="history-icon">
+                    <Pill size={18} />
+                  </div>
+                  <div className="history-content">
+                    <span className="history-title">{entry.medicineName}</span>
+                    <span className="history-time">
+                      <Clock size={12} />
+                      Scheduled: {formatTime(entry.time)} • Taken at {formatDateTime(entry.takenAt)}
+                    </span>
+                  </div>
+                  <div className="history-status">
+                    <CheckCircle size={16} />
+                  </div>
+                </div>
+              ))}
             </div>
           ))
         )}
