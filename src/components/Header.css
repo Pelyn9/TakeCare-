@@ -1,0 +1,97 @@
+.app-header {
+  background: linear-gradient(135deg, #0ea5e9 0%, #14b8a6 50%, #10b981 100%);
+  padding: 20px 20px 24px;
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.logo {
+  font-size: 28px;
+  font-weight: 800;
+  color: white;
+  letter-spacing: -1px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn.profile {
+  background: white;
+  color: #0ea5e9;
+}
+
+.greeting {
+  margin-bottom: 16px;
+}
+
+.greeting-text {
+  display: block;
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.date-text {
+  display: block;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 2px;
+}
+
+.today-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  margin-top: 8px;
+}
+
+.today-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0ea5e9 0%, #14b8a6 100%);
+  border-radius: 14px;
+  font-size: 22px;
+}
+
+.today-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.today-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.today-count {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 2px;
+}
