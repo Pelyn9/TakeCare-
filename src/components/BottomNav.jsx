@@ -1,10 +1,10 @@
-import { Home, Clock, Settings } from 'lucide-react';
+import { Home, History, Settings } from 'lucide-react';
 import './BottomNav.css';
 
 const BottomNav = ({ currentPage, onNavigate }) => {
   const navItems = [
     { id: 'home', icon: Home, label: 'Home' },
-    { id: 'history', icon: Clock, label: 'History' },
+    { id: 'history', icon: History, label: 'History' },
     { id: 'settings', icon: Settings, label: 'Settings' }
   ];
 

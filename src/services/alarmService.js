@@ -1,14 +1,21 @@
 // Alarm Service - handles sound and vibration for medicine reminders
+// Enhanced for mobile/offline APK support
+
 class AlarmService {
   constructor() {
     this.audioContext = null;
     this.alarmTimeouts = new Map();
+    this.isPlaying = false;
+    this.alarmInterval = null;
   }
 
   // Initialize audio context on user interaction
   initAudio() {
     if (!this.audioContext) {
       this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (this.audioContext.state === 'suspended') {
+      this.audioContext.resume();
     }
     return this.audioContext;
   }
@@ -17,33 +24,34 @@ class AlarmService {
   playAlarm() {
     try {
       const ctx = this.initAudio();
-      if (ctx.state === 'suspended') {
-        ctx.resume();
-      }
-
-      // Create oscillator for alarm sound
-      const oscillator = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
-
-      // Alarm pattern - repeating beep
-      oscillator.type = 'square';
-      oscillator.frequency.setValueAtTime(880, ctx.currentTime); // A5
-      oscillator.frequency.setValueAtTime(660, ctx.currentTime + 0.3); // E5
       
-      // Volume envelope
-      gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-      gainNode.gain.setValueAtTime(0.3, ctx.currentTime + 0.25);
-      gainNode.gain.setValueAtTime(0, ctx.currentTime + 0.3);
-      gainNode.gain.setValueAtTime(0.3, ctx.currentTime + 0.5);
-      gainNode.gain.setValueAtTime(0, ctx.currentTime + 0.55);
-      gainNode.gain.setValueAtTime(0.3, ctx.currentTime + 0.75);
-      gainNode.gain.setValueAtTime(0, ctx.currentTime + 0.8);
+      // Create multiple oscillators for a more noticeable alarm
+      const createBeep = (startTime, frequency) => {
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(frequency, startTime);
+        
+        // Volume envelope for beep
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(0.5, startTime + 0.05);
+        gainNode.gain.setValueAtTime(0.5, startTime + 0.15);
+        gainNode.gain.linearRampToValueAtTime(0, startTime + 0.2);
+        
+        oscillator.start(startTime);
+        oscillator.stop(startTime + 0.25);
+      };
 
-      oscillator.start(ctx.currentTime);
-      oscillator.stop(ctx.currentTime + 1);
+      // Alarm pattern - repeating beeps
+      const now = ctx.currentTime;
+      for (let i = 0; i < 4; i++) {
+        createBeep(now + i * 0.3, 880); // High beep
+        createBeep(now + i * 0.3 + 0.15, 660); // Low beep
+      }
 
       return true;
     } catch (error) {
@@ -52,7 +60,29 @@ class AlarmService {
     }
   }
 
-  // Vibrate device
+  // Play continuous alarm until stopped
+  playContinuousAlarm() {
+    if (this.isPlaying) return;
+    
+    this.isPlaying = true;
+    this.playAlarm();
+    
+    // Play alarm every 2 seconds
+    this.alarmInterval = setInterval(() => {
+      this.playAlarm();
+    }, 2000);
+  }
+
+  // Stop the continuous alarm
+  stopAlarm() {
+    if (this.alarmInterval) {
+      clearInterval(this.alarmInterval);
+      this.alarmInterval = null;
+    }
+    this.isPlaying = false;
+  }
+
+  // Vibrate device with pattern
   vibrate(pattern = [500, 200, 500, 200, 500]) {
     if ('vibrate' in navigator) {
       try {
@@ -66,10 +96,84 @@ class AlarmService {
     return false;
   }
 
+  // Vibrate continuously until stopped
+  vibrateContinuously() {
+    if ('vibrate' in navigator) {
+      try {
+        navigator.vibrate([200, 100, 200, 100, 200]);
+        return true;
+      } catch (error) {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  // Stop vibration
+  stopVibration() {
+    if ('vibrate' in navigator) {
+      navigator.vibrate(0);
+    }
+  }
+
   // Trigger full alarm (sound + vibration)
   triggerAlarm() {
-    this.playAlarm();
-    this.vibrate();
+    this.playContinuousAlarm();
+    this.vibrateContinuously();
+  }
+
+  // Stop the alarm
+  stopAlarmAndVibration() {
+    this.stopAlarm();
+    this.stopVibration();
+  }
+
+  // Show browser notification
+  showNotification(title, options = {}) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      try {
+        const notification = new Notification(title, {
+          icon: '/TakeCare+.png',
+          badge: '/TakeCare+.png',
+          tag: 'medicine-reminder',
+          requireInteraction: true,
+          vibrate: [200, 100, 200],
+          ...options
+        });
+        
+        // Play sound when notification is shown
+        notification.onshow = () => {
+          this.playAlarm();
+        };
+        
+        // Handle notification click - bring app to foreground
+        notification.onclick = () => {
+          // Stop alarm when notification is clicked
+          this.stopAlarmAndVibration();
+          
+          // Focus the app window
+          if (window.focus) {
+            window.focus();
+          }
+          
+          // Close the notification
+          notification.close();
+          
+          // If there's a callback, execute it
+          if (options.onClick) {
+            options.onClick();
+          }
+        };
+        
+        // Auto close after 30 seconds
+        setTimeout(() => notification.close(), 30000);
+        
+        return notification;
+      } catch (error) {
+        console.error('Error showing notification:', error);
+      }
+    }
+    return null;
   }
 
   // Schedule an alarm for a specific time
@@ -85,31 +189,53 @@ class AlarmService {
     }
 
     const delay = alarmTime.getTime() - now.getTime();
+    
+    // Store alarm info for reference
+    const alarmInfo = {
+      medicineName,
+      time,
+      scheduledFor: alarmTime.toISOString()
+    };
+
     const timeoutId = setTimeout(() => {
+      // Trigger the alarm callback
+      if (onAlarm) onAlarm(medicineName, time);
+      
+      // Show notification
+      this.showNotification(`Time for ${medicineName}!`, {
+        body: `It's time to take your medicine`,
+        tag: `dose-${medicineName}-${time}`
+      });
+      
+      // Play alarm and vibrate
       this.triggerAlarm();
-      if (onAlarm) onAlarm(medicineName);
     }, delay);
 
     // Store timeout ID
     const id = `${medicineName}-${time}`;
-    this.alarmTimeouts.set(id, timeoutId);
+    this.alarmTimeouts.set(id, { timeoutId, ...alarmInfo });
 
-    return timeoutId;
+    return { id, ...alarmInfo, delay };
   }
 
   // Cancel a scheduled alarm
   cancelAlarm(medicineName, time) {
     const id = `${medicineName}-${time}`;
-    const timeoutId = this.alarmTimeouts.get(id);
-    if (timeoutId) {
-      clearTimeout(timeoutId);
+    const alarmData = this.alarmTimeouts.get(id);
+    if (alarmData) {
+      clearTimeout(alarmData.timeoutId);
       this.alarmTimeouts.delete(id);
+      return true;
     }
+    return false;
   }
 
   // Cancel all alarms
   cancelAllAlarms() {
-    this.alarmTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+    this.stopAlarmAndVibration();
+    this.alarmTimeouts.forEach(alarmData => {
+      clearTimeout(alarmData.timeoutId);
+    });
     this.alarmTimeouts.clear();
   }
 
@@ -120,10 +246,25 @@ class AlarmService {
 
     doses.forEach(dose => {
       if (!dose.taken && dose.time === currentTime) {
+        // Show notification
+        this.showNotification(`Time for ${dose.medicineName}!`, {
+          body: `It's time to take your medicine at ${dose.time}`
+        });
+        
+        // Play alarm and vibrate
         this.triggerAlarm();
+        
         if (onAlarm) onAlarm(dose);
       }
     });
+  }
+
+  // Get all scheduled alarms
+  getScheduledAlarms() {
+    return Array.from(this.alarmTimeouts.entries()).map(([id, data]) => ({
+      id,
+      ...data
+    }));
   }
 }
 

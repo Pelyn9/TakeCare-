@@ -1,7 +1,7 @@
 import { Bell } from 'lucide-react';
 import './Header.css';
 
-const Header = ({ takenCount, totalCount }) => {
+const Header = ({ takenCount, totalCount, onNotificationClick }) => {
   const getCurrentDate = () => {
     const date = new Date();
     const options = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
@@ -15,7 +15,7 @@ const Header = ({ takenCount, totalCount }) => {
           <img src="/TakeCare+.png" alt="TakeCare+" className="logo-img" />
           <span className="app-name">Medication Tracker</span>
         </div>
-        <button className="icon-btn">
+        <button className="icon-btn" onClick={onNotificationClick}>
           <Bell size={20} />
         </button>
       </div>
