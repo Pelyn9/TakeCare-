@@ -1,4 +1,5 @@
 import { Bell, CalendarDays, Home } from 'lucide-react';
+import takeCareLogo from '../assets/TakeCare+.png';
 import './Header.css';
 
 const Header = ({ onNotificationClick, activeView, onViewChange }) => {
@@ -14,7 +15,7 @@ const Header = ({ onNotificationClick, activeView, onViewChange }) => {
       <div className="header-topbar">
         <div className="header-brand">
           <div className="brand-mark">
-            <img src="/TakeCare+.png" alt="TakeCare+" className="brand-logo" />
+            <img src={takeCareLogo} alt="TakeCare+" className="brand-logo" />
           </div>
 
           <div className="brand-copy">

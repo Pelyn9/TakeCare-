@@ -15,6 +15,7 @@ import {
   Wind,
   X,
 } from 'lucide-react';
+import takeCareLogo from '../assets/TakeCare+.png';
 import alarmService from '../services/alarmService';
 import storageService from '../services/storage';
 import { isDoseReadyToTake, isMedicineActiveOnDate, setTimeOnDate } from '../utils/medicineSchedule';
@@ -332,7 +333,7 @@ const HomePage = ({
       return (
         <div className="empty-state">
           <div className="empty-icon">
-            <img src="/TakeCare+.png" alt="TakeCare+" className="empty-logo" />
+            <img src={takeCareLogo} alt="TakeCare+" className="empty-logo" />
           </div>
           <h3>No medicines yet</h3>
           <p>Add your first schedule to start tracking reminders.</p>
@@ -346,7 +347,7 @@ const HomePage = ({
           <section className="progress-card" style={{ '--card-index': 0 }}>
             <div className="progress-card-main">
               <div className="progress-card-icon">
-                <img src="/TakeCare+.png" alt="TakeCare+" className="progress-card-logo" />
+                <img src={takeCareLogo} alt="TakeCare+" className="progress-card-logo" />
               </div>
 
               <div className="progress-card-copy">
