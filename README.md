@@ -1,16 +1,61 @@
-# React + Vite
+# TakeCare+ - Medication Reminder App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A mobile medication tracker app built with React and Capacitor.
 
-Currently, two official plugins are available:
+## Features
+- Medicine scheduling and tracking
+- Daily dose reminders
+- Alarm notifications with sound and vibration
+- History tracking
+- Works offline as Android APK
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Build Commands
 
-## React Compiler
+### For Local APK Build
+```bash
+# Install dependencies
+npm install
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+# Build and sync to Android
+npm run build:apk
 
-## Expanding the ESLint configuration
+# The APK will be in: android/app/build/outputs/apk/debug/app-debug.apk
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### For EAS Cloud Build
+```bash
+# Login to EAS
+npx eas-cli login
+
+# Build APK (preview profile)
+npx eas-cli build --platform android --profile preview
+
+# Build App Bundle (production profile)
+npx eas-cli build --platform android --profile production
+```
+
+## Inspection Guard
+
+The app includes an inspection guard that:
+- Disables right-click menu in production
+- Disables DevTools keyboard shortcuts (F12, Ctrl+Shift+I/J/C)
+- Blocks debugging in production
+- Only active on non-localhost URLs
+
+## Deployment
+
+### Vercel (Web)
+```bash
+npm run build
+# Deploy the dist folder to Vercel
+```
+
+The inspection guard will automatically enable on Vercel deployment.
+
+## Project Structure
+```
+src/
+  components/     # React components
+  pages/          # Page components
+  hooks/          # Custom React hooks
+  services/       # Utility services
