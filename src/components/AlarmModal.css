@@ -67,6 +67,13 @@
 .medicine-time {
   font-size: 14px;
   color: #64748b;
+  margin: 0 0 10px 0;
+}
+
+.alarm-note {
+  font-size: 13px;
+  line-height: 1.45;
+  color: #475569;
   margin: 0 0 24px 0;
 }
 
@@ -92,21 +99,4 @@
 .take-medicine-btn:hover {
   transform: scale(1.02);
   box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
-}
-
-.remind-later-btn {
-  width: 100%;
-  padding: 14px;
-  background: #f1f5f9;
-  color: #64748b;
-  font-size: 14px;
-  font-weight: 600;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.remind-later-btn:hover {
-  background: #e2e8f0;
 }

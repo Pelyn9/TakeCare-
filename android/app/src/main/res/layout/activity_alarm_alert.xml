@@ -63,22 +63,19 @@
             android:layout_height="56dp"
             android:layout_marginTop="28dp"
             android:background="@drawable/alarm_primary_button"
-            android:text="Open App"
+            android:text="Take Now In App"
             android:textAllCaps="false"
             android:textColor="@android:color/white"
             android:textSize="18sp"
             android:textStyle="bold" />
 
-        <Button
-            android:id="@+id/dismissAlarmButton"
+        <TextView
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:background="@drawable/alarm_secondary_button"
-            android:text="Dismiss Alarm"
-            android:textAllCaps="false"
-            android:textColor="#0F172A"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:gravity="center"
+            android:text="The alarm keeps ringing until this dose is marked taken."
+            android:textColor="#64748B"
+            android:textSize="14sp" />
     </LinearLayout>
 </FrameLayout>

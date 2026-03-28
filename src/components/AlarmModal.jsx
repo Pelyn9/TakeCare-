@@ -3,7 +3,7 @@ import { Pill } from 'lucide-react';
 import alarmService from '../services/alarmService';
 import './AlarmModal.css';
 
-const AlarmModal = ({ dose, onClose, onTake }) => {
+const AlarmModal = ({ dose, onTake }) => {
   useEffect(() => {
     return () => {
       alarmService.stopAlarmAndVibration();
@@ -17,13 +17,6 @@ const AlarmModal = ({ dose, onClose, onTake }) => {
   const handleTake = () => {
     alarmService.stopAlarmAndVibration();
     onTake();
-  };
-
-  const handleDismiss = () => {
-    alarmService.stopAlarmAndVibration();
-    if (onClose) {
-      onClose();
-    }
   };
 
   const formatTime = (time) => {
@@ -43,13 +36,11 @@ const AlarmModal = ({ dose, onClose, onTake }) => {
         <h2>Time for your medicine!</h2>
         <p className="medicine-name">{dose.medicineName}</p>
         <p className="medicine-time">Scheduled for {formatTime(dose.time)}</p>
+        <p className="alarm-note">This alarm keeps ringing until you mark this dose as taken.</p>
 
         <div className="alarm-actions">
           <button type="button" className="take-medicine-btn" onClick={handleTake}>
-            I took it
-          </button>
-          <button type="button" className="remind-later-btn" onClick={handleDismiss}>
-            Remind me later
+            Take Now
           </button>
         </div>
       </div>

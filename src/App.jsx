@@ -27,9 +27,11 @@ function App() {
         setActiveAlarmDose(dose);
         await alarmService.triggerAlarm(dose);
       },
-      onAction: (dose) => {
+      onAction: async (dose) => {
         setCurrentPage('home');
+        setHomeView('progress');
         setActiveAlarmDose(dose);
+        await alarmService.triggerAlarm(dose);
       },
     });
 
@@ -42,6 +44,15 @@ function App() {
         } catch (error) {
           console.error('Error requesting browser notification permission:', error);
         }
+      }
+
+      const deliveredAlarms = await alarmService.getDeliveredAlarms();
+      if (deliveredAlarms.length > 0) {
+        const latestAlarm = deliveredAlarms[deliveredAlarms.length - 1];
+        setCurrentPage('home');
+        setHomeView('progress');
+        setActiveAlarmDose(latestAlarm);
+        await alarmService.triggerAlarm(latestAlarm);
       }
     };
 
@@ -86,12 +97,6 @@ function App() {
     if (activeAlarmDose) {
       handleMarkTaken(activeAlarmDose.medicineId, activeAlarmDose.time);
     }
-  };
-
-  // Handle alarm modal dismiss
-  const handleAlarmDismiss = () => {
-    stopAlarm();
-    setActiveAlarmDose(null);
   };
 
   const handleSaveMedicine = (medicineData) => {
@@ -188,7 +193,6 @@ function App() {
 
         <AlarmModal
           dose={activeAlarmDose}
-          onClose={handleAlarmDismiss}
           onTake={handleAlarmTake}
         />
       </div>

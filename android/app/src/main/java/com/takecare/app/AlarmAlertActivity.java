@@ -102,24 +102,14 @@ public class AlarmAlertActivity extends AppCompatActivity {
 
     private void setupButtons() {
         Button openAppButton = findViewById(R.id.openAppButton);
-        Button dismissAlarmButton = findViewById(R.id.dismissAlarmButton);
 
         openAppButton.setOnClickListener(view -> {
-            dismissNotification();
-            stopAlarmFeedback();
-
             Intent launchIntent = getPackageManager().getLaunchIntentForPackage(getPackageName());
             if (launchIntent != null) {
                 launchIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(launchIntent);
             }
 
-            finish();
-        });
-
-        dismissAlarmButton.setOnClickListener(view -> {
-            dismissNotification();
-            stopAlarmFeedback();
             finish();
         });
     }
@@ -217,5 +207,10 @@ public class AlarmAlertActivity extends AppCompatActivity {
         }
 
         return hour12 + ":" + minutes + " " + suffix;
+    }
+
+    @Override
+    public void onBackPressed() {
+        // Keep the alarm screen active until the user takes the dose in the app.
     }
 }

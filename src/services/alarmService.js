@@ -11,6 +11,7 @@ class AlarmService {
     this.triggeredDoseIds = new Set();
     this.isPlaying = false;
     this.alarmInterval = null;
+    this.vibrationInterval = null;
     this.activeAlarmDose = null;
     this.hasUserInteracted = false;
     this.isInitialized = false;
@@ -318,20 +319,46 @@ class AlarmService {
       return false;
     }
 
-    try {
-      await Haptics.impact({ style: ImpactStyle.Heavy });
-      return true;
-    } catch {
-      if ('vibrate' in navigator) {
-        navigator.vibrate([200, 100, 200, 100, 200]);
+    const vibrateOnce = async () => {
+      try {
+        await Haptics.impact({ style: ImpactStyle.Heavy });
         return true;
-      }
+      } catch {
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+          navigator.vibrate([300, 180, 300, 180, 700]);
+          return true;
+        }
 
+        return false;
+      }
+    };
+
+    const didStart = await vibrateOnce();
+    if (!didStart) {
       return false;
     }
+
+    if (this.vibrationInterval) {
+      clearInterval(this.vibrationInterval);
+    }
+
+    this.vibrationInterval = setInterval(() => {
+      if (!this.isPlaying) {
+        return;
+      }
+
+      vibrateOnce();
+    }, 1800);
+
+    return true;
   }
 
   stopVibration() {
+    if (this.vibrationInterval) {
+      clearInterval(this.vibrationInterval);
+      this.vibrationInterval = null;
+    }
+
     if (!this.hasBrowserActivation()) {
       return;
     }
@@ -346,6 +373,12 @@ class AlarmService {
   }
 
   async triggerAlarm(dose) {
+    if (dose?.id && this.activeAlarmDose?.id === dose.id && this.isPlaying) {
+      return;
+    }
+
+    this.stopAlarm();
+    this.stopVibration();
     this.activeAlarmDose = dose;
     if (dose?.id) {
       this.triggeredDoseIds.add(dose.id);
@@ -509,6 +542,28 @@ class AlarmService {
       return result.notifications;
     } catch (error) {
       console.error('Error getting pending notifications:', error);
+      return [];
+    }
+  }
+
+  async getDeliveredAlarms() {
+    try {
+      const delivered = await LocalNotifications.getDeliveredNotifications();
+      const seenDoseIds = new Set();
+
+      return delivered.notifications.reduce((alarms, notification) => {
+        const dose = this.normalizeNotificationPayload(notification);
+
+        if (!dose?.id || seenDoseIds.has(dose.id)) {
+          return alarms;
+        }
+
+        seenDoseIds.add(dose.id);
+        alarms.push(dose);
+        return alarms;
+      }, []);
+    } catch (error) {
+      console.error('Error getting delivered alarms:', error);
       return [];
     }
   }
