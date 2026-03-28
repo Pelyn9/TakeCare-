@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import FloatingActionButton from './components/FloatingActionButton';
@@ -14,25 +14,43 @@ import './App.css';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
+  const [homeView, setHomeView] = useState('progress');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingMedicine, setEditingMedicine] = useState(null);
   const [activeAlarmDose, setActiveAlarmDose] = useState(null);
-  const [hasShownAlarm, setHasShownAlarm] = useState(false);
-  const lastCheckedTime = useRef(null);
-  const { todayDoses, addMedicine, markDoseTaken, medicines, refresh, stopAlarm } = useMedicines();
-
-  const takenCount = todayDoses.filter(d => d.taken).length;
-  const totalCount = todayDoses.length;
+  const { todayDoses, addMedicine, updateMedicine, deleteMedicine, markDoseTaken, medicines, refresh, stopAlarm } = useMedicines();
 
   // Request notification permission on mount and initialize audio
   useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
+    const unsubscribe = alarmService.subscribeToAlarmEvents({
+      onReceive: async (dose) => {
+        setActiveAlarmDose(dose);
+        await alarmService.triggerAlarm(dose);
+      },
+      onAction: (dose) => {
+        setCurrentPage('home');
+        setActiveAlarmDose(dose);
+      },
+    });
+
+    const initializeApp = async () => {
+      await alarmService.initializeNotifications();
+
+      if ('Notification' in window && Notification.permission === 'default') {
+        try {
+          await Notification.requestPermission();
+        } catch (error) {
+          console.error('Error requesting browser notification permission:', error);
+        }
+      }
+    };
+
+    initializeApp();
     
     // Initialize audio and mark user interaction on first interaction
     const initAudio = () => {
-      alarmService.initAudio();
       alarmService.markUserInteracted();
+      alarmService.initAudio();
       document.removeEventListener('click', initAudio);
       document.removeEventListener('touchstart', initAudio);
     };
@@ -42,70 +60,8 @@ function App() {
     return () => {
       document.removeEventListener('click', initAudio);
       document.removeEventListener('touchstart', initAudio);
+      unsubscribe();
     };
-  }, []);
-
-  // Check for due doses every minute
-  useEffect(() => {
-    const checkDoses = () => {
-      const now = new Date();
-      const currentTime = now.toTimeString().slice(0, 5);
-      
-      // Only check once per minute to prevent multiple triggers
-      if (lastCheckedTime.current === currentTime) return;
-      lastCheckedTime.current = currentTime;
-
-      todayDoses.forEach(dose => {
-        // Only trigger alarm if:
-        // 1. Dose is not taken
-        // 2. Time matches exactly
-        // 3. We haven't already shown an alarm for this time
-        // 4. No active alarm is showing
-        if (!dose.taken && 
-            dose.time === currentTime && 
-            !activeAlarmDose && 
-            !hasShownAlarm) {
-          
-          // Set alarm state
-          setActiveAlarmDose(dose);
-          setHasShownAlarm(true);
-          
-          // Trigger alarm
-          alarmService.triggerAlarm(dose);
-          
-          // Show browser notification
-          if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification(`Time for ${dose.medicineName}!`, {
-              body: `It's time to take your medicine`,
-              requireInteraction: false,
-              tag: `dose-${dose.id}`
-            });
-          }
-        }
-      });
-    };
-
-    // Check immediately
-    checkDoses();
-    
-    // Check every minute
-    const interval = setInterval(checkDoses, 60000);
-    
-    return () => clearInterval(interval);
-  }, [todayDoses, activeAlarmDose, hasShownAlarm]);
-
-  // Reset hasShownAlarm at midnight
-  useEffect(() => {
-    const checkDate = () => {
-      const today = new Date().toDateString();
-      if (checkDate.lastDate !== today) {
-        setHasShownAlarm(false);
-        checkDate.lastDate = today;
-      }
-    };
-    checkDate();
-    const interval = setInterval(checkDate, 60000);
-    return () => clearInterval(interval);
   }, []);
 
   // Handle notification bell click
@@ -115,16 +71,20 @@ function App() {
 
   // Stop alarm when user marks a dose as taken
   const handleMarkTaken = (medicineId, time) => {
+    const wasMarkedTaken = markDoseTaken(medicineId, time);
+    if (!wasMarkedTaken) {
+      return false;
+    }
+
     stopAlarm();
     setActiveAlarmDose(null);
-    markDoseTaken(medicineId, time);
+    return true;
   };
 
   // Handle alarm modal take button
   const handleAlarmTake = () => {
     if (activeAlarmDose) {
-      markDoseTaken(activeAlarmDose.medicineId, activeAlarmDose.time);
-      setActiveAlarmDose(null);
+      handleMarkTaken(activeAlarmDose.medicineId, activeAlarmDose.time);
     }
   };
 
@@ -135,22 +95,66 @@ function App() {
   };
 
   const handleSaveMedicine = (medicineData) => {
-    addMedicine(medicineData);
+    if (editingMedicine) {
+      updateMedicine(editingMedicine.id, medicineData);
+      setEditingMedicine(null);
+    } else {
+      addMedicine(medicineData);
+    }
+
+    setCurrentPage('home');
+    setHomeView('progress');
     setIsModalOpen(false);
+  };
+
+  const handleEditMedicine = (medicine) => {
+    setEditingMedicine(medicine);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteMedicine = (medicineId) => {
+    deleteMedicine(medicineId);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingMedicine(null);
   };
 
   const renderPage = () => {
     switch (currentPage) {
       case 'home':
-        return <HomePage todayDoses={todayDoses} onMarkTaken={handleMarkTaken} />;
+        return (
+          <HomePage 
+            todayDoses={todayDoses} 
+            onMarkTaken={handleMarkTaken}
+            onEditMedicine={handleEditMedicine}
+            onDeleteMedicine={handleDeleteMedicine}
+            medicines={medicines}
+            activeView={homeView}
+            onViewChange={setHomeView}
+            activeAlarmDose={activeAlarmDose}
+          />
+        );
       case 'notifications':
         return <NotificationsPage onBack={() => setCurrentPage('home')} />;
       case 'history':
-        return <HistoryPage />;
+        return <HistoryPage medicines={medicines} onRefresh={refresh} />;
       case 'settings':
         return <SettingsPage medicines={medicines} onRefresh={refresh} />;
       default:
-        return <HomePage todayDoses={todayDoses} onMarkTaken={handleMarkTaken} />;
+        return (
+          <HomePage 
+            todayDoses={todayDoses} 
+            onMarkTaken={handleMarkTaken}
+            onEditMedicine={handleEditMedicine}
+            onDeleteMedicine={handleDeleteMedicine}
+            medicines={medicines}
+            activeView={homeView}
+            onViewChange={setHomeView}
+            activeAlarmDose={activeAlarmDose}
+          />
+        );
     }
   };
 
@@ -159,9 +163,9 @@ function App() {
       <div className="app-content">
         {currentPage === 'home' && (
           <Header 
-            takenCount={takenCount} 
-            totalCount={totalCount} 
             onNotificationClick={handleNotificationClick}
+            activeView={homeView}
+            onViewChange={setHomeView}
           />
         )}
         
@@ -177,8 +181,9 @@ function App() {
 
         <AddMedicineModal
           isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
+          onClose={handleCloseModal}
           onSave={handleSaveMedicine}
+          editMedicine={editingMedicine}
         />
 
         <AlarmModal

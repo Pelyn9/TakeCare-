@@ -1,19 +1,52 @@
+import { useState, useEffect } from 'react';
 import { Bell, Database, Trash2, Info } from 'lucide-react';
 import storageService from '../services/storage';
-import useNotifications from '../hooks/useNotifications';
+import alarmService from '../services/alarmService';
 import './SettingsPage.css';
 
 const SettingsPage = ({ medicines = [], onRefresh }) => {
-  const { permission, requestPermission, supported } = useNotifications();
+  const [notificationStatus, setNotificationStatus] = useState('checking');
+  const [exactAlarmStatus, setExactAlarmStatus] = useState('checking');
+
+  useEffect(() => {
+    checkNotificationStatus();
+  }, []);
+
+  const checkNotificationStatus = async () => {
+    const [notificationPermission, exactAlarmPermission] = await Promise.all([
+      alarmService.checkPermissionStatus(),
+      alarmService.checkExactAlarmStatus(),
+    ]);
+
+    setNotificationStatus(notificationPermission);
+    setExactAlarmStatus(exactAlarmPermission);
+  };
 
   const handleNotificationToggle = async () => {
-    if (permission !== 'granted') {
-      await requestPermission();
+    if (notificationStatus === 'granted') {
+      // User wants to disable - show info that they need to do it from system settings
+      alert('To disable notifications, go to your phone\'s Settings > Apps > TakeCare+ > Notifications and turn them off.');
+      return;
+    }
+    
+    // Request permission to enable
+    const granted = await alarmService.requestPermission();
+    if (granted) {
+      setNotificationStatus('granted');
+      // Initialize notifications after permission is granted
+      await alarmService.initializeNotifications();
+      await checkNotificationStatus();
+      if (onRefresh) {
+        onRefresh();
+      }
+    } else {
+      setNotificationStatus('denied');
     }
   };
 
-  const handleClearData = () => {
+  const handleClearData = async () => {
     if (confirm('Are you sure you want to delete all your data? This cannot be undone.')) {
+      await alarmService.cancelAllAlarms();
       storageService.clearAll();
       if (onRefresh) onRefresh();
       alert('All data cleared');
@@ -21,22 +54,48 @@ const SettingsPage = ({ medicines = [], onRefresh }) => {
   };
 
   const getPermissionStatus = () => {
-    if (!supported) return 'Not supported';
-    switch (permission) {
+    switch (notificationStatus) {
       case 'granted': return 'Enabled';
       case 'denied': return 'Denied';
+      case 'checking': return 'Checking...';
       default: return 'Not set';
     }
   };
 
+  const getExactAlarmStatus = () => {
+    switch (exactAlarmStatus) {
+      case 'granted': return 'Enabled';
+      case 'denied': return 'Disabled';
+      case 'checking': return 'Checking...';
+      case 'unsupported': return 'Not needed';
+      default: return 'Unknown';
+    }
+  };
+
+  const handleExactAlarmSettings = async () => {
+    const status = await alarmService.openExactAlarmSettings();
+    if (status && status !== 'unsupported') {
+      setExactAlarmStatus(status);
+      if (onRefresh) {
+        onRefresh();
+      }
+      return;
+    }
+
+    await checkNotificationStatus();
+  };
+
   return (
     <div className="settings-page">
-      <div className="settings-header">
-        <h2>Settings</h2>
-      </div>
-      
-      <div className="settings-content">
-        <div className="settings-section">
+      <div className="settings-page-shell">
+        <div className="settings-header" style={{ '--settings-index': 0 }}>
+          <span className="settings-eyebrow">Settings</span>
+          <h2>App preferences</h2>
+          <p>Manage reminders, alarms, and your stored medicine data.</p>
+        </div>
+        
+        <div className="settings-content">
+        <div className="settings-section" style={{ '--settings-index': 1 }}>
           <h3><Bell size={16} /> Notifications</h3>
           <div className="setting-item">
             <div className="setting-info">
@@ -44,15 +103,27 @@ const SettingsPage = ({ medicines = [], onRefresh }) => {
               <span className="setting-value">{getPermissionStatus()}</span>
             </div>
             <button 
-              className={`toggle-btn ${permission === 'granted' ? 'active' : ''}`}
+              className={`toggle-btn ${notificationStatus === 'granted' ? 'active' : ''}`}
               onClick={handleNotificationToggle}
             >
-              {permission === 'granted' ? 'On' : 'Off'}
+              {notificationStatus === 'granted' ? 'On' : 'Off'}
+            </button>
+          </div>
+          <div className="setting-item">
+            <div className="setting-info">
+              <span className="setting-label">Exact Alarm Timing</span>
+              <span className="setting-value">
+                {getExactAlarmStatus()}.
+                Alarms ring on the phone schedule even when the app is not open.
+              </span>
+            </div>
+            <button className="action-btn" onClick={handleExactAlarmSettings}>
+              Manage
             </button>
           </div>
         </div>
 
-        <div className="settings-section">
+        <div className="settings-section" style={{ '--settings-index': 2 }}>
           <h3><Database size={16} /> Data</h3>
           <div className="setting-item">
             <div className="setting-info">
@@ -71,7 +142,7 @@ const SettingsPage = ({ medicines = [], onRefresh }) => {
           </div>
         </div>
 
-        <div className="settings-section">
+        <div className="settings-section" style={{ '--settings-index': 3 }}>
           <h3><Info size={16} /> About</h3>
           <div className="setting-item">
             <div className="setting-info">
@@ -86,6 +157,7 @@ const SettingsPage = ({ medicines = [], onRefresh }) => {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

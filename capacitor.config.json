@@ -1,5 +1,11 @@
 {
   "appId": "com.takecare.app",
   "appName": "TakeCare+",
-  "webDir": "dist"
+  "webDir": "dist",
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_notification",
+      "sound": "alarm.wav"
+    }
+  }
 }

@@ -1,45 +1,62 @@
-// Inspection Guard - Disable DevTools inspection in production
-const isProduction = typeof window !== 'undefined' && 
-  !window.location.hostname.includes('localhost') && 
-  !window.location.hostname.includes('127.0.0.1');
+const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
 
-if (isProduction) {
-  // Disable right-click
-  document.addEventListener('contextmenu', (e) => {
-    e.preventDefault();
-    return false;
-  });
+const isLocalHostname = (hostname = '') => {
+  return hostname === 'localhost'
+    || hostname === '127.0.0.1'
+    || hostname === '0.0.0.0';
+};
 
-  // Disable keyboard shortcuts for dev tools
-  document.addEventListener('keydown', (e) => {
-    // F12
-    if (e.keyCode === 123) {
-      e.preventDefault();
+const isVercelInspectGuardEnabled = Boolean(
+  isBrowser
+  && typeof __ENABLE_VERCEL_INSPECT_GUARD__ !== 'undefined'
+  && __ENABLE_VERCEL_INSPECT_GUARD__
+  && !isLocalHostname(window.location.hostname)
+);
+
+if (isVercelInspectGuardEnabled) {
+  try {
+    document.addEventListener('contextmenu', (event) => {
+      event.preventDefault();
       return false;
-    }
-    // Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
-    if (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key)) {
-      e.preventDefault();
-      return false;
-    }
-    // Ctrl+U
-    if (e.ctrlKey && e.key === 'u') {
-      e.preventDefault();
-      return false;
-    }
-  });
+    });
 
-  // Block debugger in production
-  Object.defineProperty(window, '__REACT_DEVTOOLS_GLOBAL_HOOK__', {
-    get: () => undefined,
-    set: () => {},
-    configurable: false
-  });
+    document.addEventListener('keydown', (event) => {
+      const key = String(event.key || '').toLowerCase();
 
-  // Disable console in production (optional - comment out if you need console for debugging)
-  // console.log = () => {};
-  // console.warn = () => {};
-  // console.error = () => {};
+      if (event.keyCode === 123) {
+        event.preventDefault();
+        return false;
+      }
+
+      if (event.ctrlKey && event.shiftKey && ['i', 'j', 'c'].includes(key)) {
+        event.preventDefault();
+        return false;
+      }
+
+      if (event.ctrlKey && key === 'u') {
+        event.preventDefault();
+        return false;
+      }
+
+      return true;
+    });
+  } catch {
+    // Keep the app running even if a browser blocks listener registration.
+  }
+
+  try {
+    const hook = window.__REACT_DEVTOOLS_GLOBAL_HOOK__;
+
+    if (hook && typeof hook === 'object') {
+      hook.inject = () => {};
+      hook.on = () => {};
+      hook.off = () => {};
+      hook.emit = () => {};
+    }
+  } catch {
+    // Never let inspect guard break initial render.
+  }
 }
 
-export const isDevEnvironment = !isProduction;
+export const isDevEnvironment = !isVercelInspectGuardEnabled;
+export const isInspectGuardEnabled = isVercelInspectGuardEnabled;

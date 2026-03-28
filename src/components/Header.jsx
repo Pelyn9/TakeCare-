@@ -1,43 +1,58 @@
-import { Bell } from 'lucide-react';
+import { Bell, CalendarDays, Home } from 'lucide-react';
 import './Header.css';
 
-const Header = ({ takenCount, totalCount, onNotificationClick }) => {
-  const getCurrentDate = () => {
-    const date = new Date();
-    const options = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
-    return date.toLocaleDateString('en-US', options);
-  };
+const Header = ({ onNotificationClick, activeView, onViewChange }) => {
+  const formattedDate = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
 
   return (
     <header className="app-header">
-      <div className="header-top">
-        <div className="logo-container">
-          <img src="/TakeCare+.png" alt="TakeCare+" className="logo-img" />
-          <span className="app-name">Medication Tracker</span>
+      <div className="header-topbar">
+        <div className="header-brand">
+          <div className="brand-mark">
+            <img src="/TakeCare+.png" alt="TakeCare+" className="brand-logo" />
+          </div>
+
+          <div className="brand-copy">
+            <span className="brand-name">Medication Tracker</span>
+            <span className="brand-date">{formattedDate}</span>
+          </div>
         </div>
-        <button className="icon-btn" onClick={onNotificationClick}>
-          <Bell size={20} />
-        </button>
-      </div>
-      
-      <div className="greeting">
-        <span className="date-text">{getCurrentDate()}</span>
+
+        <div className="header-actions">
+          <button
+            type="button"
+            className="header-icon-btn"
+            onClick={onNotificationClick}
+            aria-label="Open notifications"
+          >
+            <Bell size={18} />
+          </button>
+        </div>
       </div>
 
-      <div className="today-card">
-        <div className="today-icon">
-          <img src="/TakeCare+.png" alt="pill" />
-        </div>
-        <div className="today-info">
-          <span className="today-title">Today's Progress</span>
-          <span className="today-count">{takenCount} of {totalCount} taken</span>
-        </div>
-        <div className="today-progress">
-          <div 
-            className="progress-bar" 
-            style={{ width: totalCount > 0 ? `${(takenCount / totalCount) * 100}%` : '0%' }}
-          />
-        </div>
+      <div className="home-tab-bar" role="tablist" aria-label="Medicine views">
+        <button
+          type="button"
+          className={`home-tab ${activeView === 'progress' ? 'is-active' : ''}`}
+          onClick={() => onViewChange('progress')}
+        >
+          <Home size={16} />
+          <span>Today</span>
+        </button>
+
+        <button
+          type="button"
+          className={`home-tab ${activeView === 'schedule' ? 'is-active' : ''}`}
+          onClick={() => onViewChange('schedule')}
+        >
+          <CalendarDays size={16} />
+          <span>Schedule</span>
+        </button>
       </div>
     </header>
   );

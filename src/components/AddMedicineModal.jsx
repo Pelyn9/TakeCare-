@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, X, Pill, FlaskConical, Syringe, Wind, Droplets, Clock } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Plus, X, Pill, FlaskConical, Syringe, Wind, Droplets, Clock, RotateCcw } from 'lucide-react';
 import './AddMedicineModal.css';
 
 const ICONS = [
@@ -11,31 +11,93 @@ const ICONS = [
   { id: 'inhaler', icon: Wind, label: 'Inhaler' }
 ];
 
-const FREQUENCIES = [1, 2, 3, 4, 5, 6];
+const SCHEDULE_TYPES = [
+  { id: 'fixed', label: 'Fixed Times', desc: 'Set specific times per day' },
+  { id: 'interval', label: 'Every X Hours', desc: 'Repeat after interval' }
+];
 
-const AddMedicineModal = ({ isOpen, onClose, onSave }) => {
-  const [name, setName] = useState('');
-  const [selectedIcon, setSelectedIcon] = useState('pill');
-  const [startTime, setStartTime] = useState('08:00');
-  const [dosesPerDay, setDosesPerDay] = useState(3);
-  const [duration, setDuration] = useState(7);
-  const [durationType, setDurationType] = useState('days');
+const getFormState = (medicine = null) => ({
+  name: medicine?.name || '',
+  selectedIcon: medicine?.icon || 'pill',
+  scheduleType: medicine?.scheduleType || 'fixed',
+  startTime: medicine?.startTime || '08:00',
+  dosesPerDay: medicine?.frequency || 3,
+  intervalHours: medicine?.intervalHours || 4,
+  intervalMinutes: medicine?.intervalMinutes || 0,
+  duration: medicine?.duration || 7,
+  durationType: medicine?.durationType || 'days',
+});
+
+const AddMedicineModal = ({ isOpen, onClose, onSave, editMedicine = null }) => {
+  const modalContentRef = useRef(null);
+  const [name, setName] = useState(() => getFormState(editMedicine).name);
+  const [selectedIcon, setSelectedIcon] = useState(() => getFormState(editMedicine).selectedIcon);
+  const [scheduleType, setScheduleType] = useState(() => getFormState(editMedicine).scheduleType);
+  const [startTime, setStartTime] = useState(() => getFormState(editMedicine).startTime);
+  const [dosesPerDay, setDosesPerDay] = useState(() => getFormState(editMedicine).dosesPerDay);
+  const [intervalHours, setIntervalHours] = useState(() => getFormState(editMedicine).intervalHours);
+  const [intervalMinutes, setIntervalMinutes] = useState(() => getFormState(editMedicine).intervalMinutes);
+  const [duration, setDuration] = useState(() => getFormState(editMedicine).duration);
+  const [durationType, setDurationType] = useState(() => getFormState(editMedicine).durationType);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const formState = getFormState(editMedicine);
+    setName(formState.name);
+    setSelectedIcon(formState.selectedIcon);
+    setScheduleType(formState.scheduleType);
+    setStartTime(formState.startTime);
+    setDosesPerDay(formState.dosesPerDay);
+    setIntervalHours(formState.intervalHours);
+    setIntervalMinutes(formState.intervalMinutes);
+    setDuration(formState.duration);
+    setDurationType(formState.durationType);
+    setIsSubmitting(false);
+
+    requestAnimationFrame(() => {
+      modalContentRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+    });
+  }, [editMedicine, isOpen]);
 
   if (!isOpen) return null;
 
-  // Calculate computed times based on start time and doses per day
+  // Calculate computed times based on schedule type
   const computeTimes = () => {
     const times = [];
-    const [startHour, startMin] = startTime.split(':').map(Number);
     
-    // Calculate interval in minutes (12 hours / doses)
-    const interval = Math.floor(12 * 60 / dosesPerDay);
-    
-    for (let i = 0; i < dosesPerDay; i++) {
-      const totalMinutes = startHour * 60 + startMin + (i * interval);
-      const hour = Math.floor(totalMinutes / 60) % 24;
-      const min = totalMinutes % 60;
-      times.push(`${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`);
+    if (scheduleType === 'fixed') {
+      // Fixed times: distribute doses evenly across 12 hours
+      const [startHour, startMin] = startTime.split(':').map(Number);
+      const interval = Math.floor(12 * 60 / dosesPerDay);
+      
+      for (let i = 0; i < dosesPerDay; i++) {
+        const totalMinutes = startHour * 60 + startMin + (i * interval);
+        const hour = Math.floor(totalMinutes / 60) % 24;
+        const min = totalMinutes % 60;
+        times.push(`${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`);
+      }
+    } else {
+      // Interval-based: repeat every X hours Y minutes
+      const [startHour, startMin] = startTime.split(':').map(Number);
+      const intervalTotalMinutes = intervalHours * 60 + intervalMinutes;
+      
+      // Calculate how many doses fit in 16 waking hours (6 AM to 10 PM)
+      const maxDoses = Math.floor((16 * 60) / intervalTotalMinutes) + 1;
+      
+      for (let i = 0; i < Math.min(maxDoses, 8); i++) {
+        const totalMinutes = startHour * 60 + startMin + (i * intervalTotalMinutes);
+        const hour = Math.floor(totalMinutes / 60) % 24;
+        const min = totalMinutes % 60;
+        
+        // Only add if within reasonable waking hours (5 AM to 11 PM)
+        if (hour >= 5 && hour <= 23) {
+          times.push(`${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`);
+        }
+      }
     }
     
     return times;
@@ -53,133 +115,205 @@ const AddMedicineModal = ({ isOpen, onClose, onSave }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || isSubmitting) return;
 
-    onSave({
+    setIsSubmitting(true);
+
+    const medicineData = {
       name: name.trim(),
       icon: selectedIcon,
       times: computedTimes,
-      frequency: dosesPerDay,
+      scheduleType,
       startTime,
       duration: parseInt(duration),
       durationType,
-      startDate: new Date().toISOString()
-    });
+      startDate: editMedicine?.startDate || new Date().toISOString()
+    };
 
-    // Reset form
-    setName('');
-    setSelectedIcon('pill');
-    setStartTime('08:00');
-    setDosesPerDay(3);
-    setDuration(7);
+    // Add schedule-specific fields
+    if (scheduleType === 'fixed') {
+      medicineData.frequency = dosesPerDay;
+    } else {
+      medicineData.intervalHours = intervalHours;
+      medicineData.intervalMinutes = intervalMinutes;
+    }
+
+    onSave(medicineData);
+
+    // Reset form if not editing
+    if (!editMedicine) {
+      const resetState = getFormState();
+      setName(resetState.name);
+      setSelectedIcon(resetState.selectedIcon);
+      setScheduleType(resetState.scheduleType);
+      setStartTime(resetState.startTime);
+      setDosesPerDay(resetState.dosesPerDay);
+      setIntervalHours(resetState.intervalHours);
+      setIntervalMinutes(resetState.intervalMinutes);
+      setDuration(resetState.duration);
+      setDurationType(resetState.durationType);
+    }
   };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
+      <div className="modal-content" ref={modalContentRef} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Add Medicine</h2>
-          <button className="close-btn" onClick={onClose}>
+          <h2>{editMedicine ? 'Edit Medicine' : 'Add Medicine'}</h2>
+          <button type="button" className="close-btn" onClick={onClose}>
             <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Medicine Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Enter medicine name"
-              className="form-input"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Icon</label>
-            <div className="icon-grid">
-              {ICONS.map(icon => {
-                const Icon = icon.icon;
-                return (
-                  <button
-                    key={icon.id}
-                    type="button"
-                    className={`icon-option ${selectedIcon === icon.id ? 'selected' : ''}`}
-                    onClick={() => setSelectedIcon(icon.id)}
-                  >
-                    <Icon size={24} />
-                    <span>{icon.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="form-row">
+        <form onSubmit={handleSubmit} className="modal-form">
+          <div className="modal-body">
             <div className="form-group">
-              <label><Clock size={14} /> Start Time</label>
+              <label>Medicine Name</label>
               <input
-                type="time"
-                value={startTime}
-                onChange={e => setStartTime(e.target.value)}
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Enter medicine name"
                 className="form-input"
               />
             </div>
 
             <div className="form-group">
-              <label>Doses per Day</label>
-              <div className="frequency-pills">
-                {FREQUENCIES.map(num => (
+              <label>Icon</label>
+              <div className="icon-grid">
+                {ICONS.map(icon => {
+                  const Icon = icon.icon;
+                  return (
+                    <button
+                      key={icon.id}
+                      type="button"
+                      className={`icon-option ${selectedIcon === icon.id ? 'selected' : ''}`}
+                      onClick={() => setSelectedIcon(icon.id)}
+                    >
+                      <Icon size={24} />
+                      <span>{icon.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Schedule Type</label>
+              <div className="schedule-type-grid">
+                {SCHEDULE_TYPES.map(type => (
                   <button
-                    key={num}
+                    key={type.id}
                     type="button"
-                    className={`freq-pill ${dosesPerDay === num ? 'selected' : ''}`}
-                    onClick={() => setDosesPerDay(num)}
+                    className={`schedule-type-option ${scheduleType === type.id ? 'selected' : ''}`}
+                    onClick={() => setScheduleType(type.id)}
                   >
-                    {num}x
+                    <div className="schedule-type-label">{type.label}</div>
+                    <div className="schedule-type-desc">{type.desc}</div>
                   </button>
                 ))}
               </div>
             </div>
-          </div>
 
-          {/* Computed Times Preview */}
-          <div className="computed-times">
-            <label>Computed Times</label>
-            <div className="times-preview">
-              {computedTimes.map((time, index) => (
-                <span key={index} className="time-chip">{formatTime(time)}</span>
-              ))}
+            <div className="form-row">
+              <div className="form-group">
+                <label><Clock size={14} /> Start Time</label>
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={e => setStartTime(e.target.value)}
+                  className="form-input"
+                />
+              </div>
+
+              {scheduleType === 'fixed' ? (
+                <div className="form-group">
+                  <label>Doses per Day</label>
+                  <div className="frequency-pills">
+                    {[1, 2, 3, 4, 5, 6].map(num => (
+                      <button
+                        key={num}
+                        type="button"
+                        className={`freq-pill ${dosesPerDay === num ? 'selected' : ''}`}
+                        onClick={() => setDosesPerDay(num)}
+                      >
+                        {num}x
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="form-group">
+                  <label><RotateCcw size={14} /> Repeat Every</label>
+                  <div className="interval-inputs">
+                    <div className="interval-input-group">
+                      <input
+                        type="number"
+                        value={intervalHours}
+                        onChange={e => setIntervalHours(parseInt(e.target.value) || 0)}
+                        min="0"
+                        max="23"
+                        className="interval-input"
+                      />
+                      <span>hrs</span>
+                    </div>
+                    <div className="interval-input-group">
+                      <input
+                        type="number"
+                        value={intervalMinutes}
+                        onChange={e => setIntervalMinutes(parseInt(e.target.value) || 0)}
+                        min="0"
+                        max="59"
+                        step="5"
+                        className="interval-input"
+                      />
+                      <span>min</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="computed-times">
+              <label>Scheduled Times ({computedTimes.length} doses)</label>
+              <div className="times-preview">
+                {computedTimes.map((time, index) => (
+                  <span key={index} className="time-chip">{formatTime(time)}</span>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Duration</label>
+              <div className="duration-row">
+                <input
+                  type="number"
+                  value={duration}
+                  onChange={e => setDuration(e.target.value)}
+                  min="1"
+                  max="365"
+                  className="duration-input"
+                />
+                <select
+                  value={durationType}
+                  onChange={e => setDurationType(e.target.value)}
+                  className="duration-select"
+                >
+                  <option value="days">Days</option>
+                  <option value="weeks">Weeks</option>
+                  <option value="months">Months</option>
+                  <option value="ongoing">Ongoing</option>
+                </select>
+              </div>
             </div>
           </div>
 
-          <div className="form-group">
-            <label>Duration</label>
-            <div className="duration-row">
-              <input
-                type="number"
-                value={duration}
-                onChange={e => setDuration(e.target.value)}
-                min="1"
-                max="365"
-                className="duration-input"
-              />
-              <select
-                value={durationType}
-                onChange={e => setDurationType(e.target.value)}
-                className="duration-select"
-              >
-                <option value="days">Days</option>
-                <option value="doses">Doses</option>
-              </select>
-            </div>
+          <div className="modal-footer">
+            <button type="submit" className="save-btn" disabled={isSubmitting}>
+              <Plus size={20} />
+              {editMedicine ? 'Update Medicine' : 'Save Medicine'}
+            </button>
           </div>
-
-          <button type="submit" className="save-btn">
-            <Plus size={20} />
-            Save Medicine
-          </button>
         </form>
       </div>
     </div>
