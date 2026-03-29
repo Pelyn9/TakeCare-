@@ -363,6 +363,38 @@
   font-weight: 500;
 }
 
+/* Edit Everything Button */
+.edit-everything-btn {
+  width: 100%;
+  padding: 14px 20px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 8px;
+}
+
+.edit-everything-btn:hover {
+  border-color: #0ea5e9;
+  color: #0ea5e9;
+  background: #f0f9ff;
+}
+
+.edit-everything-btn.cancel {
+  border-color: #f87171;
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.edit-everything-btn.cancel:hover {
+  background: #fee2e2;
+  border-color: #dc2626;
+}
+
 @media (max-width: 640px) {
   .modal-overlay {
     padding-top: 0;
