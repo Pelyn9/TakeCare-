@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  AlertTriangle,
   Bell,
   CalendarDays,
   Check,
@@ -18,7 +19,15 @@ import {
 import takeCareLogo from '../assets/TakeCare+.png';
 import alarmService from '../services/alarmService';
 import storageService from '../services/storage';
-import { isDoseReadyToTake, isMedicineActiveOnDate, setTimeOnDate } from '../utils/medicineSchedule';
+import {
+  getMedicineSupply,
+  isDoseReadyToTake,
+  isMedicineActiveOnDate,
+  isMedicineLowStock,
+  isMedicineOutOfStock,
+  isMedicineSupplyTracked,
+  setTimeOnDate,
+} from '../utils/medicineSchedule';
 import './HomePage.css';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -126,6 +135,48 @@ const formatScheduleLabel = (medicine) => {
   return 'Daily';
 };
 
+const formatSupplyLabel = (medicine) => {
+  const supply = getMedicineSupply(medicine);
+
+  if (supply === null) {
+    return 'Supply not set';
+  }
+
+  if (supply === 0) {
+    return 'Out of stock';
+  }
+
+  return `${supply} ${supply === 1 ? 'medicine' : 'medicines'} left`;
+};
+
+const getSupplyCopy = (medicine) => {
+  if (!isMedicineSupplyTracked(medicine)) {
+    return {
+      className: '',
+      message: 'Set the supply in edit if you want the app to track remaining stock.',
+    };
+  }
+
+  if (isMedicineOutOfStock(medicine)) {
+    return {
+      className: 'is-empty',
+      message: 'No stock left. Update the supply after you refill this medicine.',
+    };
+  }
+
+  if (isMedicineLowStock(medicine)) {
+    return {
+      className: 'is-low',
+      message: 'Low supply warning is active. Refill this medicine soon.',
+    };
+  }
+
+  return {
+    className: 'is-healthy',
+    message: 'Supply will go down by 1 each time this dose is marked taken.',
+  };
+};
+
 const getActiveDays = (medicine) => {
   if (medicine.frequency === 'weekly') {
     return new Set([new Date(medicine.startDate || medicine.createdAt || Date.now()).getDay()]);
@@ -181,6 +232,16 @@ const HomePage = ({
     return new Map(medicines.map((medicine) => [medicine.id, medicine]));
   }, [medicines]);
 
+  const lowSupplyMedicines = useMemo(() => {
+    return medicines
+      .filter((medicine) => isMedicineLowStock(medicine) || isMedicineOutOfStock(medicine))
+      .sort((left, right) => {
+        const leftSupply = getMedicineSupply(left) ?? Number.MAX_SAFE_INTEGER;
+        const rightSupply = getMedicineSupply(right) ?? Number.MAX_SAFE_INTEGER;
+        return leftSupply - rightSupply;
+      });
+  }, [medicines]);
+
   const todayDosesByMedicine = useMemo(() => {
     return todayDoses.reduce((groups, dose) => {
       const entries = groups.get(dose.medicineId) || [];
@@ -190,13 +251,13 @@ const HomePage = ({
     }, new Map());
   }, [todayDoses]);
 
-  const isDoseTriggered = (dose) => {
+  const isDoseTriggered = useCallback((dose) => {
     if (!dose?.id) {
       return false;
     }
 
     return dose.id === activeAlarmDose?.id || alarmService.hasTriggeredDose(dose.id);
-  };
+  }, [activeAlarmDose]);
 
   const getDoseStatus = (dose) => {
     if (!dose) {
@@ -206,6 +267,19 @@ const HomePage = ({
         subtitle: 'All doses completed',
         actionLabel: 'Taken',
         statusLabel: 'Taken',
+        canTake: false,
+      };
+    }
+
+    const medicine = medicineMap.get(dose.medicineId);
+
+    if (medicine && isMedicineOutOfStock(medicine)) {
+      return {
+        heroClassName: 'is-stockout',
+        scheduleClassName: 'is-out-of-stock',
+        subtitle: 'Out of stock. Update the supply before the next dose.',
+        actionLabel: 'Out of stock',
+        statusLabel: 'Out of stock',
         canTake: false,
       };
     }
@@ -282,7 +356,7 @@ const HomePage = ({
       lateCount,
       percent: todayDoses.length === 0 ? 0 : Math.round((takenCount / todayDoses.length) * 100),
     };
-  }, [now, pendingDoses, todayDoses]);
+  }, [now, pendingDoses, todayDoses, isDoseTriggered]);
 
   const filteredMedicines = useMemo(() => {
     if (!scheduleFilterName) {
@@ -302,7 +376,7 @@ const HomePage = ({
       .filter((entry) => entry.medicineId === showHistory)
       .sort((left, right) => new Date(right.takenAt) - new Date(left.takenAt))
       .slice(0, 12);
-  }, [showHistory, medicines, todayDoses]);
+  }, [showHistory]);
 
   const selectedMedicine = showHistory ? medicineMap.get(showHistory) : null;
 
@@ -482,6 +556,33 @@ const HomePage = ({
               <p>Your next active medicine schedule will appear here.</p>
             </section>
           )}
+
+          {lowSupplyMedicines.length > 0 && (
+            <section className="stock-alert-card" style={{ '--card-index': 2 }}>
+              <div className="stock-alert-header">
+                <span className="stock-alert-badge">
+                  <AlertTriangle size={14} />
+                  <span>Supply warnings</span>
+                </span>
+                <span className="stock-alert-count">{lowSupplyMedicines.length}</span>
+              </div>
+
+              <div className="stock-alert-list">
+                {lowSupplyMedicines.map((medicine) => (
+                  <article
+                    key={medicine.id}
+                    className={`stock-alert-item ${isMedicineOutOfStock(medicine) ? 'is-empty' : 'is-low'}`.trim()}
+                  >
+                    <div>
+                      <h3>{medicine.name}</h3>
+                      <p>{isMedicineOutOfStock(medicine) ? 'Refill needed before the next dose.' : 'Only a few medicines are left.'}</p>
+                    </div>
+                    <span className="stock-alert-pill">{formatSupplyLabel(medicine)}</span>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       </div>
     );
@@ -543,13 +644,19 @@ const HomePage = ({
               const medicineDoses = todayDosesByMedicine.get(medicine.id) || [];
               const activeDays = getActiveDays(medicine);
               const nextMedicineDose = medicineDoses.find((dose) => !dose.taken) || null;
+              const supplyStatus = getSupplyCopy(medicine);
 
               let scheduleStatus = {
                 label: 'Inactive',
                 className: 'is-inactive',
               };
 
-              if (isMedicineActiveOnDate(medicine, now)) {
+              if (isMedicineOutOfStock(medicine)) {
+                scheduleStatus = {
+                  label: 'Out of stock',
+                  className: 'is-out-of-stock',
+                };
+              } else if (isMedicineActiveOnDate(medicine, now)) {
                 if (medicineDoses.length === 0) {
                   scheduleStatus = {
                     label: 'Scheduled',
@@ -637,6 +744,18 @@ const HomePage = ({
                       ) : (
                         <span className="time-chip is-empty">No times set</span>
                       )}
+                    </div>
+                  </div>
+
+                  <div className="schedule-card-section">
+                    <span className="schedule-section-label">
+                      <AlertTriangle size={13} />
+                      <span>Supply</span>
+                    </span>
+
+                    <div className={`supply-card ${supplyStatus.className}`.trim()}>
+                      <div className="supply-card-value">{formatSupplyLabel(medicine)}</div>
+                      <div className="supply-card-note">{supplyStatus.message}</div>
                     </div>
                   </div>
 

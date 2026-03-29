@@ -1,8 +1,10 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { normalizeSupplyValue } from '../utils/medicineSchedule';
 
 const ALARM_CHANNEL_ID = 'medicine-alarms';
+const SUPPLY_CHANNEL_ID = 'medicine-supply-alerts';
 
 class AlarmService {
   constructor() {
@@ -119,6 +121,12 @@ class AlarmService {
     });
   }
 
+  registerTriggeredDose(dose) {
+    if (dose?.id) {
+      this.triggeredDoseIds.add(dose.id);
+    }
+  }
+
   normalizeNotificationPayload(notification) {
     const extra = notification?.extra || {};
 
@@ -147,6 +155,21 @@ class AlarmService {
     });
   }
 
+  async ensureSupplyChannel() {
+    if (!this.isAndroid()) {
+      return;
+    }
+
+    await LocalNotifications.createChannel({
+      id: SUPPLY_CHANNEL_ID,
+      name: 'Medicine Supply Alerts',
+      description: 'Low stock warnings for tracked medicine supply',
+      importance: 4,
+      visibility: 1,
+      vibration: true,
+    });
+  }
+
   async initializeNotifications() {
     if (this.isInitialized) {
       return true;
@@ -164,8 +187,9 @@ class AlarmService {
 
       try {
         await this.ensureAlarmChannel();
+        await this.ensureSupplyChannel();
       } catch (error) {
-        console.error('Error creating alarm notification channel:', error);
+        console.error('Error creating notification channel:', error);
       }
 
       LocalNotifications.addListener('localNotificationReceived', (notification) => {
@@ -461,6 +485,48 @@ class AlarmService {
       return alarmInfo;
     } catch (error) {
       console.error('Error scheduling notification:', error);
+      return null;
+    }
+  }
+
+  async sendLowStockNotification(medicine) {
+    const supply = normalizeSupplyValue(medicine?.supply);
+    if (!medicine?.id || supply === null) {
+      return null;
+    }
+
+    const initSuccess = await this.initializeNotifications();
+    if (!initSuccess) {
+      return null;
+    }
+
+    const notificationId = this.getNotificationId(`low-stock-${medicine.id}-${supply}`);
+
+    try {
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: notificationId,
+            title: `Low stock: ${medicine.name}`,
+            body: `Only ${supply} medicines left. Update the supply when you buy more.`,
+            smallIcon: 'ic_notification',
+            iconColor: '#f97316',
+            channelId: SUPPLY_CHANNEL_ID,
+            ongoing: false,
+            autoCancel: true,
+            extra: {
+              type: 'low_stock',
+              medicineId: medicine.id,
+              medicineName: medicine.name,
+              supply,
+            },
+          },
+        ],
+      });
+
+      return notificationId;
+    } catch (error) {
+      console.error('Error scheduling low stock notification:', error);
       return null;
     }
   }

@@ -72,14 +72,26 @@ export const useMedicines = () => {
     });
 
     if (!dose || !isDoseReadyToTake(time) || !alarmService.hasTriggeredDose(dose.id)) {
-      return false;
+      return {
+        success: false,
+        reason: 'not_ready',
+      };
     }
 
-    storageService.markDoseTaken(medicineId, time);
+    const result = storageService.markDoseTaken(medicineId, time);
+    if (!result?.success) {
+      return result;
+    }
 
     // Cancel the alarm for this dose
     if (dose) {
       alarmService.cancelAlarm(dose.id);
+    }
+
+    if (result.lowSupplyWarning) {
+      alarmService.sendLowStockNotification(result.medicine).catch((error) => {
+        console.error('Error sending low stock notification:', error);
+      });
     }
 
     // Refresh medicines to update the computed doses
@@ -87,7 +99,7 @@ export const useMedicines = () => {
       setMedicines(storageService.getMedicines());
     }
 
-    return true;
+    return result;
   }, [todayDoses]);
 
   // Stop alarm (when user acknowledges it)

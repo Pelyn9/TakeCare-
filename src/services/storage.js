@@ -1,4 +1,8 @@
-import { normalizeTimeValue } from '../utils/medicineSchedule';
+import {
+  LOW_SUPPLY_THRESHOLD,
+  normalizeSupplyValue,
+  normalizeTimeValue,
+} from '../utils/medicineSchedule';
 
 // Local Storage Service for TakeCare+
 const STORAGE_KEYS = {
@@ -29,6 +33,7 @@ const buildMedicineSignature = (medicine) => {
   return JSON.stringify({
     name: String(medicine.name || '').trim().toLowerCase(),
     icon: medicine.icon || '',
+    supply: normalizeSupplyValue(medicine.supply),
     scheduleType: medicine.scheduleType || '',
     startTime: medicine.startTime || '',
     times: Array.isArray(medicine.times) ? [...medicine.times].sort() : [],
@@ -109,6 +114,7 @@ const normalizeMedicineSchedule = (medicine) => {
 
   return {
     ...medicine,
+    supply: normalizeSupplyValue(medicine.supply),
     startTime: normalizeTimeValue(medicine.startTime) || medicine.startTime,
     times: Array.isArray(normalizedTimes)
       ? [...new Set(normalizedTimes)].sort()
@@ -217,15 +223,58 @@ export const storageService = {
 
   // Mark dose as taken
   markDoseTaken: (medicineId, time) => {
+    const medicines = storageService.getMedicines();
+    const medicineIndex = medicines.findIndex((medicine) => medicine.id === medicineId);
+
+    if (medicineIndex === -1) {
+      return {
+        success: false,
+        reason: 'not_found',
+      };
+    }
+
+    const currentMedicine = medicines[medicineIndex];
+    const currentSupply = normalizeSupplyValue(currentMedicine.supply);
+
+    if (currentSupply !== null && currentSupply <= 0) {
+      return {
+        success: false,
+        reason: 'out_of_stock',
+        medicine: currentMedicine,
+        remainingSupply: 0,
+      };
+    }
+
     const history = storageService.getHistory();
     const entry = {
       medicineId,
       time: normalizeTimeValue(time) || time,
       takenAt: new Date().toISOString()
     };
+
+    let updatedMedicine = currentMedicine;
+    let remainingSupply = currentSupply;
+
+    if (currentSupply !== null) {
+      remainingSupply = Math.max(0, currentSupply - 1);
+      updatedMedicine = normalizeMedicineSchedule({
+        ...currentMedicine,
+        supply: remainingSupply,
+      });
+      medicines[medicineIndex] = updatedMedicine;
+      storageService.saveMedicines(medicines);
+    }
+
     history.push(entry);
     localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(history));
-    return entry;
+    return {
+      success: true,
+      entry,
+      medicine: updatedMedicine,
+      remainingSupply,
+      lowSupplyWarning: remainingSupply === LOW_SUPPLY_THRESHOLD,
+      outOfStock: currentSupply !== null && remainingSupply === 0,
+    };
   },
 
   // Get history

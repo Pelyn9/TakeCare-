@@ -19,6 +19,7 @@ const SCHEDULE_TYPES = [
 const getFormState = (medicine = null) => ({
   name: medicine?.name || '',
   selectedIcon: medicine?.icon || 'pill',
+  supply: medicine?.supply ?? '',
   scheduleType: medicine?.scheduleType || 'fixed',
   startTime: medicine?.startTime || '08:00',
   dosesPerDay: medicine?.frequency || 3,
@@ -30,8 +31,10 @@ const getFormState = (medicine = null) => ({
 
 const AddMedicineModal = ({ isOpen, onClose, onSave, editMedicine = null }) => {
   const modalContentRef = useRef(null);
+  const isEditMode = Boolean(editMedicine);
   const [name, setName] = useState(() => getFormState(editMedicine).name);
   const [selectedIcon, setSelectedIcon] = useState(() => getFormState(editMedicine).selectedIcon);
+  const [supply, setSupply] = useState(() => getFormState(editMedicine).supply);
   const [scheduleType, setScheduleType] = useState(() => getFormState(editMedicine).scheduleType);
   const [startTime, setStartTime] = useState(() => getFormState(editMedicine).startTime);
   const [dosesPerDay, setDosesPerDay] = useState(() => getFormState(editMedicine).dosesPerDay);
@@ -49,6 +52,7 @@ const AddMedicineModal = ({ isOpen, onClose, onSave, editMedicine = null }) => {
     const formState = getFormState(editMedicine);
     setName(formState.name);
     setSelectedIcon(formState.selectedIcon);
+    setSupply(formState.supply);
     setScheduleType(formState.scheduleType);
     setStartTime(formState.startTime);
     setDosesPerDay(formState.dosesPerDay);
@@ -64,6 +68,19 @@ const AddMedicineModal = ({ isOpen, onClose, onSave, editMedicine = null }) => {
   }, [editMedicine, isOpen]);
 
   if (!isOpen) return null;
+
+  const parseSupplyInput = (value) => {
+    if (value === '') {
+      return null;
+    }
+
+    const parsedValue = parseInt(value, 10);
+    if (Number.isNaN(parsedValue)) {
+      return null;
+    }
+
+    return Math.max(0, parsedValue);
+  };
 
   // Calculate computed times based on schedule type
   const computeTimes = () => {
@@ -84,6 +101,10 @@ const AddMedicineModal = ({ isOpen, onClose, onSave, editMedicine = null }) => {
       // Interval-based: repeat every X hours Y minutes
       const [startHour, startMin] = startTime.split(':').map(Number);
       const intervalTotalMinutes = intervalHours * 60 + intervalMinutes;
+
+      if (intervalTotalMinutes <= 0) {
+        return [startTime];
+      }
       
       // Calculate how many doses fit in 16 waking hours (6 AM to 10 PM)
       const maxDoses = Math.floor((16 * 60) / intervalTotalMinutes) + 1;
@@ -115,13 +136,28 @@ const AddMedicineModal = ({ isOpen, onClose, onSave, editMedicine = null }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!name.trim() || isSubmitting) return;
+    if (isSubmitting) return;
+
+    const parsedSupply = parseSupplyInput(supply);
+
+    if (isEditMode) {
+      if (parsedSupply === null) {
+        return;
+      }
+
+      setIsSubmitting(true);
+      onSave({ supply: parsedSupply });
+      return;
+    }
+
+    if (!name.trim() || parsedSupply === null) return;
 
     setIsSubmitting(true);
 
     const medicineData = {
       name: name.trim(),
       icon: selectedIcon,
+      supply: parsedSupply,
       times: computedTimes,
       scheduleType,
       startTime,
@@ -145,6 +181,7 @@ const AddMedicineModal = ({ isOpen, onClose, onSave, editMedicine = null }) => {
       const resetState = getFormState();
       setName(resetState.name);
       setSelectedIcon(resetState.selectedIcon);
+      setSupply(resetState.supply);
       setScheduleType(resetState.scheduleType);
       setStartTime(resetState.startTime);
       setDosesPerDay(resetState.dosesPerDay);
@@ -159,7 +196,7 @@ const AddMedicineModal = ({ isOpen, onClose, onSave, editMedicine = null }) => {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" ref={modalContentRef} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>{editMedicine ? 'Edit Medicine' : 'Add Medicine'}</h2>
+          <h2>{isEditMode ? 'Update Supply' : 'Add Medicine'}</h2>
           <button type="button" className="close-btn" onClick={onClose}>
             <X size={20} />
           </button>
@@ -167,151 +204,197 @@ const AddMedicineModal = ({ isOpen, onClose, onSave, editMedicine = null }) => {
 
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="modal-body">
-            <div className="form-group">
-              <label>Medicine Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder="Enter medicine name"
-                className="form-input"
-              />
-            </div>
+            {isEditMode ? (
+              <>
+                <div className="edit-supply-card">
+                  <span className="edit-supply-label">Refill medicine stock</span>
+                  <h3>{editMedicine.name}</h3>
+                  <p>Only the available supply can be updated here. The schedule stays the same.</p>
 
-            <div className="form-group">
-              <label>Icon</label>
-              <div className="icon-grid">
-                {ICONS.map(icon => {
-                  const Icon = icon.icon;
-                  return (
-                    <button
-                      key={icon.id}
-                      type="button"
-                      className={`icon-option ${selectedIcon === icon.id ? 'selected' : ''}`}
-                      onClick={() => setSelectedIcon(icon.id)}
-                    >
-                      <Icon size={24} />
-                      <span>{icon.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+                  <div className="times-preview">
+                    {(editMedicine.times || []).map((time, index) => (
+                      <span key={index} className="time-chip">{formatTime(time)}</span>
+                    ))}
+                  </div>
+                </div>
 
-            <div className="form-group">
-              <label>Schedule Type</label>
-              <div className="schedule-type-grid">
-                {SCHEDULE_TYPES.map(type => (
-                  <button
-                    key={type.id}
-                    type="button"
-                    className={`schedule-type-option ${scheduleType === type.id ? 'selected' : ''}`}
-                    onClick={() => setScheduleType(type.id)}
-                  >
-                    <div className="schedule-type-label">{type.label}</div>
-                    <div className="schedule-type-desc">{type.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label><Clock size={14} /> Start Time</label>
-                <input
-                  type="time"
-                  value={startTime}
-                  onChange={e => setStartTime(e.target.value)}
-                  className="form-input"
-                />
-              </div>
-
-              {scheduleType === 'fixed' ? (
                 <div className="form-group">
-                  <label>Doses per Day</label>
-                  <div className="frequency-pills">
-                    {[1, 2, 3, 4, 5, 6].map(num => (
+                  <label>Available Medicine Supply</label>
+                  <input
+                    type="number"
+                    value={supply}
+                    onChange={e => setSupply(e.target.value)}
+                    placeholder="Enter how many medicines you have now"
+                    min="0"
+                    className="form-input"
+                    required
+                  />
+                  <p className="form-helper">Set the total stock you have right now. Every taken dose will subtract 1.</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="form-group">
+                  <label>Medicine Name</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    placeholder="Enter medicine name"
+                    className="form-input"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Available Medicine Supply</label>
+                  <input
+                    type="number"
+                    value={supply}
+                    onChange={e => setSupply(e.target.value)}
+                    placeholder="How many medicines are available?"
+                    min="0"
+                    className="form-input"
+                    required
+                  />
+                  <p className="form-helper">The app will subtract 1 every time you mark a dose as taken.</p>
+                </div>
+
+                <div className="form-group">
+                  <label>Icon</label>
+                  <div className="icon-grid">
+                    {ICONS.map(icon => {
+                      const Icon = icon.icon;
+                      return (
+                        <button
+                          key={icon.id}
+                          type="button"
+                          className={`icon-option ${selectedIcon === icon.id ? 'selected' : ''}`}
+                          onClick={() => setSelectedIcon(icon.id)}
+                        >
+                          <Icon size={24} />
+                          <span>{icon.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Schedule Type</label>
+                  <div className="schedule-type-grid">
+                    {SCHEDULE_TYPES.map(type => (
                       <button
-                        key={num}
+                        key={type.id}
                         type="button"
-                        className={`freq-pill ${dosesPerDay === num ? 'selected' : ''}`}
-                        onClick={() => setDosesPerDay(num)}
+                        className={`schedule-type-option ${scheduleType === type.id ? 'selected' : ''}`}
+                        onClick={() => setScheduleType(type.id)}
                       >
-                        {num}x
+                        <div className="schedule-type-label">{type.label}</div>
+                        <div className="schedule-type-desc">{type.desc}</div>
                       </button>
                     ))}
                   </div>
                 </div>
-              ) : (
-                <div className="form-group">
-                  <label><RotateCcw size={14} /> Repeat Every</label>
-                  <div className="interval-inputs">
-                    <div className="interval-input-group">
-                      <input
-                        type="number"
-                        value={intervalHours}
-                        onChange={e => setIntervalHours(parseInt(e.target.value) || 0)}
-                        min="0"
-                        max="23"
-                        className="interval-input"
-                      />
-                      <span>hrs</span>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label><Clock size={14} /> Start Time</label>
+                    <input
+                      type="time"
+                      value={startTime}
+                      onChange={e => setStartTime(e.target.value)}
+                      className="form-input"
+                    />
+                  </div>
+
+                  {scheduleType === 'fixed' ? (
+                    <div className="form-group">
+                      <label>Doses per Day</label>
+                      <div className="frequency-pills">
+                        {[1, 2, 3, 4, 5, 6].map(num => (
+                          <button
+                            key={num}
+                            type="button"
+                            className={`freq-pill ${dosesPerDay === num ? 'selected' : ''}`}
+                            onClick={() => setDosesPerDay(num)}
+                          >
+                            {num}x
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                    <div className="interval-input-group">
-                      <input
-                        type="number"
-                        value={intervalMinutes}
-                        onChange={e => setIntervalMinutes(parseInt(e.target.value) || 0)}
-                        min="0"
-                        max="59"
-                        step="5"
-                        className="interval-input"
-                      />
-                      <span>min</span>
+                  ) : (
+                    <div className="form-group">
+                      <label><RotateCcw size={14} /> Repeat Every</label>
+                      <div className="interval-inputs">
+                        <div className="interval-input-group">
+                          <input
+                            type="number"
+                            value={intervalHours}
+                            onChange={e => setIntervalHours(parseInt(e.target.value, 10) || 0)}
+                            min="0"
+                            max="23"
+                            className="interval-input"
+                          />
+                          <span>hrs</span>
+                        </div>
+                        <div className="interval-input-group">
+                          <input
+                            type="number"
+                            value={intervalMinutes}
+                            onChange={e => setIntervalMinutes(parseInt(e.target.value, 10) || 0)}
+                            min="0"
+                            max="59"
+                            step="5"
+                            className="interval-input"
+                          />
+                          <span>min</span>
+                        </div>
+                      </div>
                     </div>
+                  )}
+                </div>
+
+                <div className="computed-times">
+                  <label>Scheduled Times ({computedTimes.length} doses)</label>
+                  <div className="times-preview">
+                    {computedTimes.map((time, index) => (
+                      <span key={index} className="time-chip">{formatTime(time)}</span>
+                    ))}
                   </div>
                 </div>
-              )}
-            </div>
 
-            <div className="computed-times">
-              <label>Scheduled Times ({computedTimes.length} doses)</label>
-              <div className="times-preview">
-                {computedTimes.map((time, index) => (
-                  <span key={index} className="time-chip">{formatTime(time)}</span>
-                ))}
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>Duration</label>
-              <div className="duration-row">
-                <input
-                  type="number"
-                  value={duration}
-                  onChange={e => setDuration(e.target.value)}
-                  min="1"
-                  max="365"
-                  className="duration-input"
-                />
-                <select
-                  value={durationType}
-                  onChange={e => setDurationType(e.target.value)}
-                  className="duration-select"
-                >
-                  <option value="days">Days</option>
-                  <option value="weeks">Weeks</option>
-                  <option value="months">Months</option>
-                  <option value="ongoing">Ongoing</option>
-                </select>
-              </div>
-            </div>
+                <div className="form-group">
+                  <label>Duration</label>
+                  <div className="duration-row">
+                    <input
+                      type="number"
+                      value={duration}
+                      onChange={e => setDuration(e.target.value)}
+                      min="1"
+                      max="365"
+                      className="duration-input"
+                    />
+                    <select
+                      value={durationType}
+                      onChange={e => setDurationType(e.target.value)}
+                      className="duration-select"
+                    >
+                      <option value="days">Days</option>
+                      <option value="weeks">Weeks</option>
+                      <option value="months">Months</option>
+                      <option value="ongoing">Ongoing</option>
+                    </select>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="modal-footer">
             <button type="submit" className="save-btn" disabled={isSubmitting}>
               <Plus size={20} />
-              {editMedicine ? 'Update Medicine' : 'Save Medicine'}
+              {isEditMode ? 'Update Supply' : 'Save Medicine'}
             </button>
           </div>
         </form>

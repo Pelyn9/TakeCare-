@@ -1,4 +1,5 @@
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
+export const LOW_SUPPLY_THRESHOLD = 5;
 
 export const parseTimeValue = (time) => {
   if (typeof time !== 'string') {
@@ -47,6 +48,37 @@ export const normalizeTimeValue = (time) => {
   }
 
   return `${String(parsedTime.hours).padStart(2, '0')}:${String(parsedTime.minutes).padStart(2, '0')}`;
+};
+
+export const normalizeSupplyValue = (value) => {
+  if (value === '' || value === null || value === undefined) {
+    return null;
+  }
+
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) {
+    return null;
+  }
+
+  return Math.max(0, Math.floor(numericValue));
+};
+
+export const getMedicineSupply = (medicine) => {
+  return normalizeSupplyValue(medicine?.supply);
+};
+
+export const isMedicineSupplyTracked = (medicine) => {
+  return getMedicineSupply(medicine) !== null;
+};
+
+export const isMedicineOutOfStock = (medicine) => {
+  const supply = getMedicineSupply(medicine);
+  return supply !== null && supply <= 0;
+};
+
+export const isMedicineLowStock = (medicine, threshold = LOW_SUPPLY_THRESHOLD) => {
+  const supply = getMedicineSupply(medicine);
+  return supply !== null && supply > 0 && supply <= threshold;
 };
 
 const parseDate = (value) => {
@@ -187,6 +219,8 @@ export const buildTodayDoses = (medicines, history, today = new Date()) => {
       return;
     }
 
+    const supply = getMedicineSupply(medicine);
+
     medicine.times.forEach((time) => {
       doses.push({
         id: buildDoseOccurrenceId(medicine.id, dateKey, time),
@@ -194,6 +228,9 @@ export const buildTodayDoses = (medicines, history, today = new Date()) => {
         medicineId: medicine.id,
         medicineName: medicine.name,
         medicineIcon: medicine.icon,
+        medicineSupply: supply,
+        supplyTracked: supply !== null,
+        outOfStock: supply !== null && supply <= 0,
         time,
         taken: isDoseTakenOnDate(history, medicine.id, time, dateKey),
       });
@@ -221,6 +258,10 @@ export const buildUpcomingAlarmOccurrences = (
 
     medicines.forEach((medicine) => {
       if (!isMedicineActiveOnDate(medicine, date) || !Array.isArray(medicine.times)) {
+        return;
+      }
+
+      if (isMedicineOutOfStock(medicine)) {
         return;
       }
 

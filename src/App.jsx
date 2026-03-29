@@ -49,10 +49,10 @@ function App() {
       const deliveredAlarms = await alarmService.getDeliveredAlarms();
       if (deliveredAlarms.length > 0) {
         const latestAlarm = deliveredAlarms[deliveredAlarms.length - 1];
+        alarmService.registerTriggeredDose(latestAlarm);
         setCurrentPage('home');
         setHomeView('progress');
         setActiveAlarmDose(latestAlarm);
-        await alarmService.triggerAlarm(latestAlarm);
       }
     };
 
@@ -82,13 +82,23 @@ function App() {
 
   // Stop alarm when user marks a dose as taken
   const handleMarkTaken = (medicineId, time) => {
-    const wasMarkedTaken = markDoseTaken(medicineId, time);
-    if (!wasMarkedTaken) {
+    const markResult = markDoseTaken(medicineId, time);
+    if (!markResult?.success) {
+      if (markResult?.reason === 'out_of_stock') {
+        alert(`No supply left for ${markResult.medicine?.name || 'this medicine'}. Update the supply before taking the next dose.`);
+      }
+
       return false;
     }
 
     stopAlarm();
     setActiveAlarmDose(null);
+
+    if (markResult.lowSupplyWarning) {
+      const medicineName = markResult.medicine?.name || 'This medicine';
+      alert(`${medicineName} only has 5 medicines left. Refill soon to avoid missing the next dose.`);
+    }
+
     return true;
   };
 

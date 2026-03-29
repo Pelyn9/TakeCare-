@@ -106,6 +106,16 @@
   margin-bottom: 10px;
 }
 
+.notification-item-alert {
+  border: 1px solid #fed7aa;
+  box-shadow: 0 10px 24px rgba(249, 115, 22, 0.08);
+}
+
+.notification-item-alert.is-critical {
+  border-color: #fecaca;
+  box-shadow: 0 10px 24px rgba(239, 68, 68, 0.08);
+}
+
 .notification-icon {
   width: 40px;
   height: 40px;
@@ -116,6 +126,14 @@
   border-radius: 12px;
   color: white;
   flex-shrink: 0;
+}
+
+.notification-icon-alert {
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
+}
+
+.notification-item-alert.is-critical .notification-icon-alert {
+  background: linear-gradient(135deg, #fb7185 0%, #ef4444 100%);
 }
 
 .notification-content {

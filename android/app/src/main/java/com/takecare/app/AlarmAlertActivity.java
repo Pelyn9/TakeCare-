@@ -7,9 +7,12 @@ import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
+import android.service.notification.StatusBarNotification;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
@@ -29,6 +32,19 @@ public class AlarmAlertActivity extends AppCompatActivity {
     private MediaPlayer mediaPlayer;
     private Vibrator vibrator;
     private int notificationId = Integer.MIN_VALUE;
+    private final Handler notificationMonitorHandler = new Handler(Looper.getMainLooper());
+    private final Runnable notificationMonitor = new Runnable() {
+        @Override
+        public void run() {
+            if (isNotificationStillActive()) {
+                notificationMonitorHandler.postDelayed(this, 1000);
+                return;
+            }
+
+            stopAlarmFeedback();
+            finish();
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,6 +53,7 @@ public class AlarmAlertActivity extends AppCompatActivity {
         setContentView(R.layout.activity_alarm_alert);
         bindAlarmDetails(getIntent());
         startAlarmFeedback();
+        startNotificationMonitor();
         setupButtons();
     }
 
@@ -47,10 +64,12 @@ public class AlarmAlertActivity extends AppCompatActivity {
         stopAlarmFeedback();
         bindAlarmDetails(intent);
         startAlarmFeedback();
+        startNotificationMonitor();
     }
 
     @Override
     protected void onDestroy() {
+        stopNotificationMonitor();
         stopAlarmFeedback();
         super.onDestroy();
     }
@@ -109,9 +128,36 @@ public class AlarmAlertActivity extends AppCompatActivity {
                 launchIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(launchIntent);
             }
-
-            finish();
         });
+    }
+
+    private void startNotificationMonitor() {
+        stopNotificationMonitor();
+        notificationMonitorHandler.post(notificationMonitor);
+    }
+
+    private void stopNotificationMonitor() {
+        notificationMonitorHandler.removeCallbacks(notificationMonitor);
+    }
+
+    private boolean isNotificationStillActive() {
+        if (notificationId == Integer.MIN_VALUE || Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return true;
+        }
+
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (notificationManager == null) {
+            return true;
+        }
+
+        StatusBarNotification[] activeNotifications = notificationManager.getActiveNotifications();
+        for (StatusBarNotification activeNotification : activeNotifications) {
+            if (activeNotification.getId() == notificationId) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void startAlarmFeedback() {
@@ -178,17 +224,6 @@ public class AlarmAlertActivity extends AppCompatActivity {
             vibrator.vibrate(VibrationEffect.createWaveform(VIBRATION_PATTERN, 0));
         } else {
             vibrator.vibrate(VIBRATION_PATTERN, 0);
-        }
-    }
-
-    private void dismissNotification() {
-        if (notificationId == Integer.MIN_VALUE) {
-            return;
-        }
-
-        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        if (notificationManager != null) {
-            notificationManager.cancel(notificationId);
         }
     }
 

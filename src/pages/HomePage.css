@@ -187,6 +187,11 @@
   box-shadow: 0 16px 32px rgba(237, 137, 54, 0.26);
 }
 
+.next-dose-hero.is-stockout {
+  background: linear-gradient(145deg, #fb7185 0%, #f97316 100%);
+  box-shadow: 0 16px 32px rgba(249, 115, 22, 0.3);
+}
+
 .next-dose-hero.is-taken {
   background: linear-gradient(145deg, #48d7c8 0%, #38cfae 100%);
   box-shadow: 0 16px 32px rgba(56, 207, 174, 0.26);
@@ -325,6 +330,7 @@
 
 .next-dose-hero.is-ready .next-dose-action,
 .next-dose-hero.is-overdue .next-dose-action,
+.next-dose-hero.is-stockout .next-dose-action,
 .next-dose-hero.is-taken .next-dose-action {
   color: #2f6f97;
 }
@@ -622,10 +628,105 @@
   color: #64748b;
 }
 
+.status-chip.is-out-of-stock {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 .schedule-card-section {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.stock-alert-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #fff7ed 0%, #fff1f2 100%);
+  border: 1px solid #fed7aa;
+  box-shadow: 0 12px 28px rgba(249, 115, 22, 0.12);
+}
+
+.stock-alert-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stock-alert-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #c2410c;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.stock-alert-count {
+  min-width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #c2410c;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.stock-alert-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stock-alert-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(251, 146, 60, 0.16);
+}
+
+.stock-alert-item.is-empty {
+  border-color: rgba(239, 68, 68, 0.24);
+}
+
+.stock-alert-item h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.stock-alert-item p {
+  margin: 0;
+  font-size: 13px;
+  color: #7c2d12;
+}
+
+.stock-alert-pill {
+  min-height: 34px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .schedule-section-label {
@@ -710,6 +811,43 @@
 
 .list-row-action-icon.is-danger:hover {
   background: #fee2e2;
+}
+
+.supply-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.supply-card.is-healthy {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.supply-card.is-low {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.supply-card.is-empty {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.supply-card-value {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.supply-card-note {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #64748b;
 }
 
 .empty-state,
@@ -990,6 +1128,11 @@
   .medicine-avatar.is-large {
     width: 48px;
     height: 48px;
+  }
+
+  .stock-alert-item {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 
