@@ -207,14 +207,14 @@ const SettingsPage = ({ medicines = [], onRefresh }) => {
               </div>
               <div className="download-buttons">
                 <button className="download-apk-btn" onClick={handleDownloadAPK}>
-                  <Download size={16} /> Download APK
+                  <Download size={16} /> Download APK for Android
                 </button>
                 <p className="download-note">
                   <Info size={14} /> Android will show "Install at your own risk" warning - this is normal for apps installed outside the Play Store. 
                   The app is safe to install.
                 </p>
                 <button className="download-ios-btn" onClick={handleDownloadiOS}>
-                  <Download size={16} /> Download iOS App
+                  <Download size={16} /> Download App for iOS 
                 </button>
                 <p className="download-note">
                   <Smartphone size={14} /> For iOS: Download the .ipa file and install using AltStore or similar tools.
