@@ -15,6 +15,7 @@
     "@capacitor/cli": "^6.1.2",
     "@capacitor/core": "^6.1.2",
     "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.3.0",
     "@capacitor/local-notifications": "^8.0.2",
     "lucide-react": "^0.474.0",
     "react": "^19.0.0",

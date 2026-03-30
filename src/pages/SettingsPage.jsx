@@ -55,12 +55,29 @@ const SettingsPage = ({ medicines = [], onRefresh }) => {
   };
 
   const handleDownloadAPK = () => {
-    const link = document.createElement('a');
-    link.href = '/TakeCare-plus.apk';
-    link.download = 'TakeCare-plus.apk';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const confirmed = window.confirm(
+      'TakeCare+ helps you track your medicines, set reminders, and never miss a dose.\n\n' +
+      '⚠️ Download at your own risk:\n' +
+      'This app is not available on the Google Play Store. Android will show a security warning when installing apps from unknown sources. This is normal and the app is safe to install.\n\n' +
+      'Do you want to continue downloading?'
+    );
+    
+    if (confirmed) {
+      window.location.href = '/TakeCare-plus.apk';
+    }
+  };
+
+  const handleDownloadiOS = () => {
+    const confirmed = window.confirm(
+      'TakeCare+ helps you track your medicines, set reminders, and never miss a dose.\n\n' +
+      '📱 For iOS Installation:\n' +
+      'Download the .ipa file and install using AltStore or similar sideloading tools.\n\n' +
+      'Do you want to continue downloading?'
+    );
+    
+    if (confirmed) {
+      window.open('/TakeCare-plus.ipa', '_blank');
+    }
   };
 
   const isWeb = Capacitor.getPlatform() === 'web';
@@ -178,11 +195,26 @@ const SettingsPage = ({ medicines = [], onRefresh }) => {
             <div className="setting-item download-item">
               <div className="setting-info">
                 <span className="setting-label">Get the Mobile App</span>
-                <span className="setting-value">Download the Android APK for the best experience</span>
+                <span className="setting-value">
+                  TakeCare+ helps you track your medicines, set reminders, and never miss a dose. 
+                  Install the app on your device for the best experience with notifications and offline access.
+                </span>
               </div>
-              <button className="download-apk-btn" onClick={handleDownloadAPK}>
-                <Download size={14} /> Download APK
-              </button>
+              <div className="download-buttons">
+                <button className="download-apk-btn" onClick={handleDownloadAPK}>
+                  <Download size={14} /> Download APK (Android)
+                </button>
+                <p className="download-note">
+                  ⚠️ Android will show "Install at your own risk" warning - this is normal for apps installed outside the Play Store. 
+                  The app is safe to install.
+                </p>
+                <button className="download-ios-btn" onClick={handleDownloadiOS}>
+                  <Download size={14} /> Download iOS App
+                </button>
+                <p className="download-note">
+                  📱 For iOS: Download the .ipa file and install using AltStore or similar tools.
+                </p>
+              </div>
             </div>
           )}
         </div>
