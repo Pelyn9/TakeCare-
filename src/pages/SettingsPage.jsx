@@ -207,7 +207,7 @@ const SettingsPage = ({ medicines = [], onRefresh }) => {
               </div>
               <div className="download-buttons">
                 <button className="download-apk-btn" onClick={handleDownloadAPK}>
-                  <Download size={16} /> Download APK (Android)
+                  <Download size={16} /> Download APK
                 </button>
                 <p className="download-note">
                   <Info size={14} /> Android will show "Install at your own risk" warning - this is normal for apps installed outside the Play Store. 
