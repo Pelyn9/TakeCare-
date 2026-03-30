@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, Database, Trash2, Info, Download } from 'lucide-react';
+import { Bell, Database, Trash2, Info, Download, Smartphone } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import storageService from '../services/storage';
 import alarmService from '../services/alarmService';
@@ -205,14 +205,14 @@ const SettingsPage = ({ medicines = [], onRefresh }) => {
                   <Download size={14} /> Download APK (Android)
                 </button>
                 <p className="download-note">
-                  ⚠️ Android will show "Install at your own risk" warning - this is normal for apps installed outside the Play Store. 
+                  <Info size={14} /> Android will show "Install at your own risk" warning - this is normal for apps installed outside the Play Store. 
                   The app is safe to install.
                 </p>
                 <button className="download-ios-btn" onClick={handleDownloadiOS}>
                   <Download size={14} /> Download iOS App
                 </button>
                 <p className="download-note">
-                  📱 For iOS: Download the .ipa file and install using AltStore or similar tools.
+                  <Smartphone size={14} /> For iOS: Download the .ipa file and install using AltStore or similar tools.
                 </p>
               </div>
             </div>
