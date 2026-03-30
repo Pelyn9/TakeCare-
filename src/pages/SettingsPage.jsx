@@ -168,6 +168,12 @@ const SettingsPage = ({ medicines = [], onRefresh }) => {
               <span className="setting-value">Never Miss a Dose</span>
             </div>
           </div>
+          <div className="setting-item">
+            <div className="setting-info">
+              <span className="setting-label">Developer</span>
+              <span className="setting-value">Peejay Marco A. Apale</span>
+            </div>
+          </div>
           {isWeb && (
             <div className="setting-item download-item">
               <div className="setting-info">
