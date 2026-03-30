@@ -20,6 +20,9 @@ const AlarmModal = ({ dose, onTake }) => {
   };
 
   const formatTime = (time) => {
+    if (!time) {
+      return 'Not scheduled';
+    }
     const [hours, minutes] = time.split(':');
     const hour = parseInt(hours, 10);
     const ampm = hour >= 12 ? 'PM' : 'AM';

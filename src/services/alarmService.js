@@ -144,15 +144,20 @@ class AlarmService {
       return;
     }
 
-    await LocalNotifications.createChannel({
-      id: ALARM_CHANNEL_ID,
-      name: 'Medicine Alarms',
-      description: 'Exact reminder alarms for medicines',
-      importance: 5,
-      visibility: 1,
-      vibration: true,
-      sound: 'alarm.wav',
-    });
+    try {
+      await LocalNotifications.createChannel({
+        id: ALARM_CHANNEL_ID,
+        name: 'Medicine Alarms',
+        description: 'Exact reminder alarms for medicines',
+        importance: 5,
+        visibility: 1,
+        vibration: true,
+        sound: 'default', // Use default system sound instead of alarm.wav
+      });
+      console.log('Alarm channel created successfully');
+    } catch (error) {
+      console.error('Error creating alarm channel:', error);
+    }
   }
 
   async ensureSupplyChannel() {
@@ -442,12 +447,22 @@ class AlarmService {
   async scheduleAlarm(occurrence) {
     const initSuccess = await this.initializeNotifications();
     if (!initSuccess) {
+      console.error('Failed to initialize notifications');
       return null;
     }
 
     const notificationId = this.getNotificationId(occurrence.id);
 
     try {
+      // Ensure the scheduled time is in the future
+      const scheduledTime = new Date(occurrence.scheduledAt);
+      const now = new Date();
+      
+      if (scheduledTime <= now) {
+        console.warn('Scheduled time is in the past, skipping alarm:', occurrence.id);
+        return null;
+      }
+
       await LocalNotifications.schedule({
         notifications: [
           {
@@ -456,12 +471,12 @@ class AlarmService {
             body: `Time to take ${occurrence.medicineName} at ${occurrence.time}.`,
             smallIcon: 'ic_notification',
             iconColor: '#4CAF50',
-            sound: 'alarm.wav',
+            sound: 'default', // Use default system sound
             channelId: ALARM_CHANNEL_ID,
             ongoing: true,
             autoCancel: false,
             schedule: {
-              at: occurrence.scheduledAt,
+              at: scheduledTime,
               allowWhileIdle: true,
             },
             extra: {
@@ -478,10 +493,11 @@ class AlarmService {
       const alarmInfo = {
         ...occurrence,
         notificationId,
-        scheduledFor: occurrence.scheduledAt.toISOString(),
+        scheduledFor: scheduledTime.toISOString(),
       };
 
       this.scheduledNotifications.set(occurrence.id, alarmInfo);
+      console.log('Alarm scheduled successfully:', alarmInfo);
       return alarmInfo;
     } catch (error) {
       console.error('Error scheduling notification:', error);

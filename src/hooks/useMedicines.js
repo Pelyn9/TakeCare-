@@ -9,13 +9,13 @@ import {
 
 export const useMedicines = () => {
   const [medicines, setMedicines] = useState(() => storageService.getMedicines());
+  const [history, setHistory] = useState(() => storageService.getHistory());
   const isMounted = useRef(true);
 
   // Generate today's doses from medicines (computed value)
   const todayDoses = useMemo(() => {
-    const history = storageService.getHistory();
     return buildTodayDoses(medicines, history);
-  }, [medicines]);
+  }, [medicines, history]);
 
   // Schedule alarms for all upcoming doses (now async)
   const scheduleAlarms = useCallback(async (allMedicines) => {
@@ -66,16 +66,30 @@ export const useMedicines = () => {
   }, []);
 
   // Mark dose as taken
-  const markDoseTaken = useCallback((medicineId, time) => {
+  const markDoseTaken = useCallback((medicineId, time, bypassTimeCheck = false) => {
     const dose = todayDoses.find((entry) => {
       return entry.medicineId === medicineId && entry.time === time && !entry.taken;
     });
 
-    if (!dose || !isDoseReadyToTake(time) || !alarmService.hasTriggeredDose(dose.id)) {
+    if (!dose) {
       return {
         success: false,
         reason: 'not_ready',
       };
+    }
+
+    // Allow taking dose if bypassing time check (from AlarmModal) or if time is ready
+    if (!bypassTimeCheck && !isDoseReadyToTake(time)) {
+      return {
+        success: false,
+        reason: 'not_ready',
+      };
+    }
+
+    // Register the dose as triggered if it hasn't been already
+    // This allows manual "Take Now" without requiring an alarm trigger
+    if (!alarmService.hasTriggeredDose(dose.id)) {
+      alarmService.registerTriggeredDose(dose);
     }
 
     const result = storageService.markDoseTaken(medicineId, time);
@@ -94,9 +108,10 @@ export const useMedicines = () => {
       });
     }
 
-    // Refresh medicines to update the computed doses
+    // Refresh medicines and history to update the computed doses
     if (isMounted.current) {
       setMedicines(storageService.getMedicines());
+      setHistory(storageService.getHistory());
     }
 
     return result;
@@ -110,8 +125,10 @@ export const useMedicines = () => {
   // Refresh medicines from storage
   const refresh = useCallback(() => {
     const storedMedicines = storageService.getMedicines();
+    const storedHistory = storageService.getHistory();
     if (isMounted.current) {
       setMedicines(storedMedicines);
+      setHistory(storedHistory);
     }
   }, []);
 

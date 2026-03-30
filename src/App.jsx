@@ -10,7 +10,10 @@ import AddMedicineModal from './components/AddMedicineModal';
 import AlarmModal from './components/AlarmModal';
 import useMedicines from './hooks/useMedicines';
 import alarmService from './services/alarmService';
+import storageService from './services/storage';
 import './App.css';
+
+const APP_VERSION = '1.0.0';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
@@ -19,6 +22,17 @@ function App() {
   const [editingMedicine, setEditingMedicine] = useState(null);
   const [activeAlarmDose, setActiveAlarmDose] = useState(null);
   const { todayDoses, addMedicine, updateMedicine, deleteMedicine, markDoseTaken, medicines, refresh, stopAlarm } = useMedicines();
+
+  // Check for app version updates and clear data if needed
+  useEffect(() => {
+    const storedVersion = localStorage.getItem('takecare_app_version');
+    if (storedVersion !== APP_VERSION) {
+      // App has been updated, clear all data
+      storageService.clearAll();
+      localStorage.setItem('takecare_app_version', APP_VERSION);
+      console.log('App updated to version', APP_VERSION, '- data cleared');
+    }
+  }, []);
 
   // Request notification permission on mount and initialize audio
   useEffect(() => {
@@ -84,8 +98,20 @@ function App() {
   const handleMarkTaken = (medicineId, time) => {
     const markResult = markDoseTaken(medicineId, time);
     if (!markResult?.success) {
-      if (markResult?.reason === 'out_of_stock') {
-        alert(`No supply left for ${markResult.medicine?.name || 'this medicine'}. Update the supply before taking the next dose.`);
+      // Provide user-friendly error messages based on failure reason
+      switch (markResult?.reason) {
+        case 'out_of_stock':
+          alert(`No supply left for ${markResult.medicine?.name || 'this medicine'}. Update the supply before taking the next dose.`);
+          break;
+        case 'not_time_yet':
+          alert(markResult.message || 'It is not time to take this dose yet.');
+          break;
+        case 'dose_not_found':
+          alert('This dose could not be found. It may have already been taken.');
+          break;
+        default:
+          // Silent fail for other reasons, but still return false
+          console.warn('Failed to mark dose as taken:', markResult);
       }
 
       return false;
@@ -105,7 +131,20 @@ function App() {
   // Handle alarm modal take button
   const handleAlarmTake = () => {
     if (activeAlarmDose) {
-      handleMarkTaken(activeAlarmDose.medicineId, activeAlarmDose.time);
+      // Bypass time check when taking from alarm modal
+      const markResult = markDoseTaken(activeAlarmDose.medicineId, activeAlarmDose.time, true);
+      if (markResult?.success) {
+        // Stop alarm and vibration immediately
+        alarmService.stopAlarmAndVibration();
+        // Clear the active alarm dose to close the modal
+        setActiveAlarmDose(null);
+        // Clear the triggered dose from alarm service
+        alarmService.clearTriggeredDose(activeAlarmDose.id);
+        if (markResult.lowSupplyWarning) {
+          const medicineName = markResult.medicine?.name || 'This medicine';
+          alert(`${medicineName} only has 5 medicines left. Refill soon to avoid missing the next dose.`);
+        }
+      }
     }
   };
 

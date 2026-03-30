@@ -298,25 +298,14 @@ const HomePage = ({
       };
     }
 
-    if (timeReached && triggered) {
-      return {
-        heroClassName: 'is-ready',
-        scheduleClassName: 'is-ready',
-        subtitle: 'Alarm ready',
-        actionLabel: 'Take Now',
-        statusLabel: 'Ready',
-        canTake: true,
-      };
-    }
-
     if (timeReached) {
       return {
-        heroClassName: 'is-overdue',
-        scheduleClassName: 'is-overdue',
-        subtitle: 'Waiting for alarm',
-        actionLabel: 'Not time yet',
-        statusLabel: 'Late',
-        canTake: false,
+        heroClassName: triggered ? 'is-ready' : 'is-overdue',
+        scheduleClassName: triggered ? 'is-ready' : 'is-overdue',
+        subtitle: triggered ? 'Alarm ready' : 'Ready to take',
+        actionLabel: 'Take Now',
+        statusLabel: triggered ? 'Ready' : 'Late',
+        canTake: true,
       };
     }
 
