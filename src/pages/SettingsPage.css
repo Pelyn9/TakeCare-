@@ -198,6 +198,36 @@
   background: #fecaca;
 }
 
+.download-item {
+  border-color: #dbeafe;
+  background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+}
+
+.download-apk-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  background: linear-gradient(145deg, #48d7c8 0%, #7c8cf8 100%);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+  box-shadow: 0 4px 14px rgba(124, 140, 248, 0.25);
+}
+
+.download-apk-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(124, 140, 248, 0.35);
+}
+
+.download-apk-btn:active {
+  transform: translateY(0);
+}
+
 @keyframes settingsFadeUp {
   from {
     opacity: 0;

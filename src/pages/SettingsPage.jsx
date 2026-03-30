@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Bell, Database, Trash2, Info } from 'lucide-react';
+import { Bell, Database, Trash2, Info, Download } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 import storageService from '../services/storage';
 import alarmService from '../services/alarmService';
 import './SettingsPage.css';
@@ -52,6 +53,17 @@ const SettingsPage = ({ medicines = [], onRefresh }) => {
       alert('All data cleared');
     }
   };
+
+  const handleDownloadAPK = () => {
+    const link = document.createElement('a');
+    link.href = '/TakeCare-plus.apk';
+    link.download = 'TakeCare-plus.apk';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const isWeb = Capacitor.getPlatform() === 'web';
 
   const getPermissionStatus = () => {
     switch (notificationStatus) {
@@ -156,6 +168,17 @@ const SettingsPage = ({ medicines = [], onRefresh }) => {
               <span className="setting-value">Never Miss a Dose</span>
             </div>
           </div>
+          {isWeb && (
+            <div className="setting-item download-item">
+              <div className="setting-info">
+                <span className="setting-label">Get the Mobile App</span>
+                <span className="setting-value">Download the Android APK for the best experience</span>
+              </div>
+              <button className="download-apk-btn" onClick={handleDownloadAPK}>
+                <Download size={14} /> Download APK
+              </button>
+            </div>
+          )}
         </div>
       </div>
       </div>
