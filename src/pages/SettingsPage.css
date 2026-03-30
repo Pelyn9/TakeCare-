@@ -134,6 +134,20 @@
   line-height: 1.45;
 }
 
+.download-item .setting-value {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #475569;
+}
+
+@media (min-width: 768px) {
+  .download-item .setting-value {
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 8px;
+  }
+}
+
 .toggle-btn,
 .action-btn,
 .delete-btn {
@@ -198,9 +212,104 @@
   background: #fecaca;
 }
 
-.download-item {
-  border-color: #dbeafe;
-  background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+.download-container {
+  background: linear-gradient(135deg, #eff6ff 0%, #f8fbff 100%);
+  border: 1px solid #dbeafe;
+  border-radius: 20px;
+  padding: 20px;
+  margin-top: 8px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+}
+
+.download-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  text-align: center;
+  flex-direction: column;
+}
+
+.download-icon {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(145deg, #48d7c8 0%, #7c8cf8 100%);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  flex-shrink: 0;
+  margin: 0 auto;
+}
+
+.download-title-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  text-align: center;
+  align-items: center;
+}
+
+.download-label {
+  font-size: 20px;
+  font-weight: 800;
+  color: #1e293b;
+  text-align: center;
+}
+
+.download-description {
+  font-size: 14px;
+  color: #475569;
+  line-height: 1.6;
+  text-align: justify;
+  max-width: 400px;
+}
+
+@media (min-width: 768px) {
+  .download-container {
+    padding: 24px;
+  }
+
+  .download-header {
+    gap: 20px;
+  }
+
+  .download-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+  }
+
+  .download-label {
+    font-size: 20px;
+  }
+
+  .download-description {
+    font-size: 15px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .download-container {
+    padding: 28px;
+  }
+
+  .download-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+  }
+
+  .download-label {
+    font-size: 22px;
+  }
+
+  .download-description {
+    font-size: 16px;
+    line-height: 1.7;
+  }
 }
 
 .download-apk-btn {
@@ -256,8 +365,9 @@
 .download-buttons {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
+  margin-top: 8px;
 }
 
 .download-note {
@@ -265,7 +375,56 @@
   color: #64748b;
   line-height: 1.4;
   margin: 0;
-  padding: 0 4px;
+  padding: 8px 12px;
+  background: rgba(241, 245, 249, 0.8);
+  border-radius: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.download-note svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+@media (min-width: 768px) {
+  .download-buttons {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .download-apk-btn,
+  .download-ios-btn {
+    flex: 0 0 auto;
+    min-width: 160px;
+    justify-content: center;
+  }
+
+  .download-note {
+    flex: 1 1 100%;
+    min-width: auto;
+    margin-top: 8px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .download-buttons {
+    gap: 20px;
+  }
+
+  .download-apk-btn,
+  .download-ios-btn {
+    min-width: 180px;
+    padding: 12px 20px;
+  }
+
+  .download-note {
+    font-size: 12px;
+    padding: 10px 14px;
+  }
 }
 
 @keyframes settingsFadeUp {
