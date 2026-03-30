@@ -8,9 +8,36 @@ import './SettingsPage.css';
 const SettingsPage = ({ medicines = [], onRefresh }) => {
   const [notificationStatus, setNotificationStatus] = useState('checking');
   const [exactAlarmStatus, setExactAlarmStatus] = useState('checking');
+  const [isInstalledApp, setIsInstalledApp] = useState(false);
 
   useEffect(() => {
     checkNotificationStatus();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia('(display-mode: standalone)');
+    const updateInstalledState = () => {
+      const runningStandalone =
+        mediaQuery.matches ||
+        window.navigator.standalone === true ||
+        document.referrer.startsWith('android-app://');
+
+      setIsInstalledApp(runningStandalone);
+    };
+
+    updateInstalledState();
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', updateInstalledState);
+      return () => mediaQuery.removeEventListener('change', updateInstalledState);
+    }
+
+    mediaQuery.addListener(updateInstalledState);
+    return () => mediaQuery.removeListener(updateInstalledState);
   }, []);
 
   const checkNotificationStatus = async () => {
@@ -81,6 +108,7 @@ const SettingsPage = ({ medicines = [], onRefresh }) => {
   };
 
   const isWeb = Capacitor.getPlatform() === 'web';
+  const showDownloadSection = isWeb && !isInstalledApp;
 
   const getPermissionStatus = () => {
     switch (notificationStatus) {
@@ -191,7 +219,7 @@ const SettingsPage = ({ medicines = [], onRefresh }) => {
               <span className="setting-value">Peejay Marco A. Apale</span>
             </div>
           </div>
-          {isWeb && (
+          {showDownloadSection && (
             <div className="download-container">
               <div className="download-header">
                 <div className="download-icon">
