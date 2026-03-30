@@ -21,6 +21,7 @@ function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMedicine, setEditingMedicine] = useState(null);
   const [activeAlarmDose, setActiveAlarmDose] = useState(null);
+  const [isHandlingAlarm, setIsHandlingAlarm] = useState(false);
   const { todayDoses, addMedicine, updateMedicine, deleteMedicine, markDoseTaken, medicines, refresh, stopAlarm } = useMedicines();
 
   // Check for app version updates and clear data if needed
@@ -38,14 +39,34 @@ function App() {
   useEffect(() => {
     const unsubscribe = alarmService.subscribeToAlarmEvents({
       onReceive: async (dose) => {
-        setActiveAlarmDose(dose);
-        await alarmService.triggerAlarm(dose);
+        // Prevent duplicate alarm handling
+        if (isHandlingAlarm || activeAlarmDose) {
+          console.log('Already handling an alarm, skipping duplicate');
+          return;
+        }
+        setIsHandlingAlarm(true);
+        try {
+          setActiveAlarmDose(dose);
+          await alarmService.triggerAlarm(dose);
+        } finally {
+          setIsHandlingAlarm(false);
+        }
       },
       onAction: async (dose) => {
-        setCurrentPage('home');
-        setHomeView('progress');
-        setActiveAlarmDose(dose);
-        await alarmService.triggerAlarm(dose);
+        // Prevent duplicate alarm handling
+        if (isHandlingAlarm || activeAlarmDose) {
+          console.log('Already handling an alarm, skipping duplicate');
+          return;
+        }
+        setIsHandlingAlarm(true);
+        try {
+          setCurrentPage('home');
+          setHomeView('progress');
+          setActiveAlarmDose(dose);
+          await alarmService.triggerAlarm(dose);
+        } finally {
+          setIsHandlingAlarm(false);
+        }
       },
     });
 

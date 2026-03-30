@@ -1,9 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Pill } from 'lucide-react';
 import alarmService from '../services/alarmService';
 import './AlarmModal.css';
 
 const AlarmModal = ({ dose, onTake }) => {
+  const [isTaking, setIsTaking] = useState(false);
+
   useEffect(() => {
     return () => {
       alarmService.stopAlarmAndVibration();
@@ -15,6 +17,12 @@ const AlarmModal = ({ dose, onTake }) => {
   }
 
   const handleTake = () => {
+    // Prevent multiple clicks
+    if (isTaking) {
+      console.log('Already taking dose, ignoring duplicate click');
+      return;
+    }
+    setIsTaking(true);
     alarmService.stopAlarmAndVibration();
     onTake();
   };
