@@ -71,12 +71,12 @@ const SettingsPage = ({ medicines = [], onRefresh }) => {
     const confirmed = window.confirm(
       'TakeCare+ helps you track your medicines, set reminders, and never miss a dose.\n\n' +
       '📱 For iOS Installation:\n' +
-      'Download the .ipa file and install using AltStore or similar sideloading tools.\n\n' +
+      'Download the iOS app package and install using AltStore or similar sideloading tools.\n\n' +
       'Do you want to continue downloading?'
     );
     
     if (confirmed) {
-      window.open('/TakeCare-plus.ipa', '_blank');
+      window.location.href = '/TakeCare-plus-ios.zip';
     }
   };
 
